@@ -705,6 +705,20 @@ describe('API pengaduan desa', () => {
       assert.deepEqual(waktu, [...waktu].sort((a, b) => b - a));
     });
 
+    it('tandai satu notifikasi: hanya miliknya, yang lain tetap belum dibaca', async () => {
+      const awal = (await get('/notifications', T.warga2)).data.filter((x) => !x.dibaca);
+      assert.ok(awal.length >= 1);
+      const sasaran = awal[0];
+      assert.equal((await post(`/notifications/${sasaran.id}/read`, {})).status, 401);
+      assert.equal((await post(`/notifications/${sasaran.id}/read`, {}, T.warga)).status, 404, 'milik orang lain');
+      assert.equal((await post('/notifications/abc/read', {}, T.warga2)).status, 404);
+      assert.equal((await post('/notifications/999999999/read', {}, T.warga2)).status, 404);
+      assert.deepEqual((await post(`/notifications/${sasaran.id}/read`, {}, T.warga2)).data, { ok: true });
+      const akhir = (await get('/notifications', T.warga2)).data;
+      assert.equal(akhir.find((x) => x.id === sasaran.id).dibaca, true);
+      assert.equal(akhir.filter((x) => !x.dibaca).length, awal.length - 1);
+    });
+
     it('read-all hanya memengaruhi pengguna itu', async () => {
       assert.ok((await get('/notifications', T.warga)).data.some((x) => !x.dibaca));
       assert.ok((await get('/notifications', T.warga2)).data.some((x) => !x.dibaca));

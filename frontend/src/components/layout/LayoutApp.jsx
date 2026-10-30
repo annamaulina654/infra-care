@@ -35,7 +35,11 @@ export default function LayoutApp() {
   const [laci, setLaci] = useState(false);
 
   // Jumlah notifikasi belum dibaca; dimuat ulang tiap pindah halaman.
-  const { data: notif } = useFetch(() => api('/notifications').catch(() => []), [pathname]);
+  const { data: notif, reload: muatNotif } = useFetch(() => api('/notifications').catch(() => []), [pathname]);
+  useEffect(() => {
+    window.addEventListener('notif-berubah', muatNotif);
+    return () => window.removeEventListener('notif-berubah', muatNotif);
+  }, [muatNotif]);
   const belumDibaca = (notif || []).filter((n) => !n.dibaca).length;
 
   useEffect(() => { setLaci(false); }, [pathname]);

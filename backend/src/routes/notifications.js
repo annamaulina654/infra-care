@@ -18,4 +18,14 @@ router.post('/read-all', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Tandai satu notifikasi sebagai dibaca. Hanya notifikasi milik pengguna itu sendiri.
+router.post('/:id/read', wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  const baris = Number.isInteger(id) && id > 0
+    ? await q('update notifications set dibaca=true where id=$1 and user_id=$2 returning id', [id, req.user.id])
+    : [];
+  if (!baris.length) return res.status(404).json({ message: 'Notifikasi tidak ditemukan' });
+  res.json({ ok: true });
+}));
+
 module.exports = router;

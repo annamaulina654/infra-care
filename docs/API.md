@@ -49,6 +49,7 @@ Lingkup data: masyarakat = miliknya; perangkat = dusunnya + yang ia input; admin
 
 ## Notifikasi [login]
 - GET /api/notifications → `[{id,tipe,judul,isi,dibaca,created_at}]` (terbaru dulu)
+- POST /api/notifications/:id/read → `{ok:true}`; 404 bila tidak ada atau bukan milik pengguna
 - POST /api/notifications/read-all → `{ok:true}`
 
 ## Laporan [login] (admin|kades)
