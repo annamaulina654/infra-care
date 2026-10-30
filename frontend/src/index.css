@@ -1,0 +1,87 @@
+@import 'tailwindcss';
+
+/* Mode gelap dikendalikan lewat class "dark" pada <html> (lihat hooks/useTheme.js). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------
+   Warna dibuat sebagai variabel semantik. Komponen cukup memakai
+   bg-surface, text-ink, border-line, dst., tanpa menulis varian dark: di mana-mana.
+   ------------------------------------------------------------------ */
+:root {
+  --bg: #eef5fd;
+  --surface: #ffffff;
+  --surface-2: #f4f8fe;
+  --ink: #14306b;
+  --muted: #566a92;
+  --line: #d9e6f7;
+  --brand: #1565d8;        /* tombol utama, tautan */
+  --brand-hover: #0f52b5;
+  --brand-soft: #e6f0ff;
+  --brand-deep: #0b2a6b;   /* judul besar */
+}
+.dark {
+  --bg: #0b1120;
+  --surface: #111b2e;
+  --surface-2: #16233a;
+  --ink: #e5ecf6;
+  --muted: #9aaac2;
+  --line: #243349;
+  --brand: #2f78e6;
+  --brand-hover: #4a8cf0;
+  --brand-soft: #16294a;
+  --brand-deep: #dbe8ff;
+}
+
+@theme inline {
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-deep: var(--brand-deep);
+}
+
+@layer base {
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  /* Teks panjang tanpa spasi (judul, nama, tautan) dipatahkan agar tidak melebarkan halaman. */
+  body { @apply bg-bg font-sans text-ink antialiased; overflow-wrap: anywhere; }
+  /* Fokus keyboard yang jelas di semua elemen interaktif. */
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+  ::selection { background: color-mix(in srgb, var(--brand) 25%, transparent); }
+}
+
+@layer components {
+  /* Kartu dasar yang dipakai di hampir semua halaman. */
+  .card { @apply rounded-2xl border border-line bg-surface shadow-sm; }
+  /* Isian formulir. Tinggi 44px agar nyaman disentuh di HP. */
+  .field {
+    @apply block min-h-11 w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-muted/80
+      transition-colors focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+}
+
+/* Penanda peta bergaya titik berwarna (tanpa gambar ikon bawaan Leaflet). */
+.pin { display: block; width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.pin::after { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: #fff; }
+.leaflet-container { font-family: inherit; z-index: 0; }
+
+/* Gerakan dikurangi bila pengguna memintanya. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Cetak / simpan PDF: sembunyikan navigasi, tampilkan isi laporan saja. */
+@media print {
+  html, body { background: #fff !important; color: #000 !important; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .card { box-shadow: none !important; break-inside: avoid; }
+  @page { margin: 14mm; }
+}
+.print-only { display: none; }
