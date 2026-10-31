@@ -16,12 +16,12 @@ const HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 function BatangHarian({ data }) {
   const maks = Math.max(1, ...data.map((d) => d.n));
   return (
-    <div className="flex h-40 items-end gap-2 sm:gap-3" role="img" aria-label={`Pengaduan 7 hari terakhir: ${data.map((d) => `${d.n}`).join(', ')}`}>
+    <div className="flex h-40 items-end gap-2 sm:gap-3" role="img" aria-label={`Pengaduan 7 hari terakhir: ${data.map((d) => `${d.hari}: ${d.n}`).join(', ')}`}>
       {data.map((d) => (
         <div key={d.hari} className="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
           <span className="text-xs font-semibold">{d.n}</span>
           <div className={cx('w-full rounded-t-lg', d.n ? 'bg-brand' : 'bg-line')} style={{ height: `${Math.max(d.n ? 8 : 3, (d.n / maks) * 100)}%` }} />
-          <span className="text-[11px] text-muted">{HARI[new Date(d.hari + 'T00:00:00').getDay()]}</span>
+          <span className="text-center text-[11px] leading-tight text-muted">{HARI[new Date(d.hari + 'T12:00:00').getDay()]}<br />{Number(d.hari.slice(8))}</span>
         </div>
       ))}
     </div>

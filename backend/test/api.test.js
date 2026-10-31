@@ -378,6 +378,10 @@ describe('API pengaduan desa', () => {
         assert.equal(s[k], v, k);
       }
       assert.equal(s.harian.length, 7);
+      // tanggal ISO berurutan, dan yang terakhir adalah hari ini menurut waktu Jakarta
+      const hariIniWIB = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
+      assert.match(s.harian[0].hari, /^\d{4}-\d{2}-\d{2}$/);
+      assert.equal(s.harian[6].hari, hariIniWIB);
       assert.equal(s.kategori.reduce((n, k) => n + k.n, 0), 12);
       assert.deepEqual(s.kategori[0], { kategori: 'Jalan', n: 4 });
     });

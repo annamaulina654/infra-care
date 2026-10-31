@@ -32,10 +32,13 @@ router.get('/stats', auth(), wrap(async (req, res) => {
     from complaints c where ${f.where()}`, f.params);
   const kategori = await q(
     `select c.kategori, count(*)::int n from complaints c where ${f.where()} group by 1 order by 2 desc, 1`, f.params);
+  // Hari dihitung menurut waktu Jakarta (WIB), bukan zona waktu server database (Supabase memakai UTC).
+  // `hari` dikirim sebagai tanggal ISO (YYYY-MM-DD) agar frontend dapat menentukan nama harinya dengan benar.
   const harian = await q(
-    `select to_char(d,'DD Mon') hari,
-       (select count(*)::int from complaints c where c.created_at::date = d::date and ${f.where()}) n
-     from generate_series(current_date-6, current_date, '1 day') d order by d`, f.params);
+    `select to_char(d, 'YYYY-MM-DD') hari,
+       (select count(*)::int from complaints c where (c.created_at at time zone 'Asia/Jakarta')::date = d::date and ${f.where()}) n
+     from generate_series((now() at time zone 'Asia/Jakarta')::date - 6, (now() at time zone 'Asia/Jakarta')::date, '1 day') d
+     order by d`, f.params);
   res.json({ ...s, kategori, harian });
 }));
 

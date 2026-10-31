@@ -22,8 +22,8 @@ const bacaPeriode = (query) => {
   if (dari && sampai && dari > sampai) return { error: 'Tanggal awal tidak boleh setelah tanggal akhir' };
 
   const filter = buatFilter();
-  if (dari) filter.tambah('c.created_at::date >= ?::date', dari);
-  if (sampai) filter.tambah('c.created_at::date <= ?::date', sampai);
+  if (dari) filter.tambah("(c.created_at at time zone 'Asia/Jakarta')::date >= ?::date", dari);
+  if (sampai) filter.tambah("(c.created_at at time zone 'Asia/Jakarta')::date <= ?::date", sampai);
   return { filter, periode: { dari: dari || null, sampai: sampai || null } };
 };
 

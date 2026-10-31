@@ -35,7 +35,7 @@ Kode pengaduan: `ADU-<tahun>-<5 digit>`.
 
 ## Pengaduan [login]
 Lingkup data: masyarakat = miliknya; perangkat = dusunnya + yang ia input; admin & kades = semua.
-- GET /api/stats → `{total,diproses,perencanaan,perbaikan,selesai,diteruskan,ditolak,aktif,kategori:[{kategori,n}],harian:[{hari,n}]}` (aktif = total−selesai−ditolak; harian 7 hari)
+- GET /api/stats → `{total,diproses,perencanaan,perbaikan,selesai,diteruskan,ditolak,aktif,kategori:[{kategori,n}],harian:[{hari,n}]}` (aktif = total−selesai−ditolak; harian = 7 hari terakhir menurut waktu Jakarta, `hari` berformat `YYYY-MM-DD`)
 - GET /api/complaints?status&kategori&dusun&kelompok(aktif|selesai|ditolak)&q&page=1&limit=20 → `{data:[...],total,page,limit}` (limit maks 100)
   Item: `{id,kode,judul,kategori,deskripsi,lokasi,dusun,lat,lng,perkiraan,urgensi,status,anonim,instansi,user_id,created_at,updated_at,ada_foto,pelapor}` — TANPA `foto`, `pelapor_nama`, `pengirim`.
   `pelapor`: nama (atau `pelapor_nama` bila diinput perangkat); bila `anonim`: admin & pemilik melihat `"<nama> (anonim)"`, lainnya `"Anonim"`.
