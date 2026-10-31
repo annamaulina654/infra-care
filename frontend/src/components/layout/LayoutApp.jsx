@@ -3,6 +3,8 @@ import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import Logo from './Logo.jsx';
 import TombolTema from './TombolTema.jsx';
 import { Avatar } from '../ui/Kartu.jsx';
+import Dialog from '../ui/Dialog.jsx';
+import Tombol from '../ui/Tombol.jsx';
 import { IkonMenu, IkonTutup, IkonLonceng, IkonKeluar, IkonBeranda } from '../../lib/icons.js';
 import { MENU, ROLE_LABEL } from '../../lib/constants.js';
 import { api } from '../../lib/api.js';
@@ -33,6 +35,7 @@ export default function LayoutApp() {
   const { user, keluar } = useAuth();
   const { pathname } = useLocation();
   const [laci, setLaci] = useState(false);
+  const [tanyaKeluar, setTanyaKeluar] = useState(false);
 
   // Jumlah notifikasi belum dibaca; dimuat ulang tiap pindah halaman.
   const { data: notif, reload: muatNotif } = useFetch(() => api('/notifications').catch(() => []), [pathname]);
@@ -62,7 +65,7 @@ export default function LayoutApp() {
         <Link to="/" className="flex min-h-11 items-center gap-3 rounded-xl px-3.5 text-sm font-semibold text-muted hover:bg-surface2 hover:text-ink">
           <IkonBeranda className="size-5" aria-hidden />Halaman Depan
         </Link>
-        <button type="button" onClick={keluar}
+        <button type="button" onClick={() => { setLaci(false); setTanyaKeluar(true); }}
           className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3.5 text-sm font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10">
           <IkonKeluar className="size-5" aria-hidden />Keluar
         </button>
@@ -80,6 +83,14 @@ export default function LayoutApp() {
           <aside role="dialog" aria-modal="true" aria-label="Menu" className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-surface shadow-2xl">{panel}</aside>
         </div>
       )}
+
+      <Dialog buka={tanyaKeluar} tutup={() => setTanyaKeluar(false)} judul="Keluar dari akun?" lebar="max-w-sm">
+        <p className="text-sm text-muted">Anda akan keluar dari {APP_NAME}. Untuk masuk lagi, Anda perlu memasukkan email dan kata sandi.</p>
+        <div className="mt-6 flex justify-end gap-2">
+          <Tombol varian="garis" onClick={() => setTanyaKeluar(false)}>Batal</Tombol>
+          <Tombol varian="bahaya" ikon={IkonKeluar} onClick={() => { setTanyaKeluar(false); keluar(); }}>Ya, keluar</Tombol>
+        </div>
+      </Dialog>
 
       <div className="lg:pl-64">
         <header className="no-print sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur sm:px-6">
