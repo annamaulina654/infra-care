@@ -48,4 +48,4 @@ Bila desa ternyata membutuhkan salah satunya setelah evaluasi, tambahkan sebagai
 
 - Wawancara hanya dengan satu narasumber; kebutuhan warga dan perangkat desa lain belum diuji. Rencana evaluasi dan pengujian yang disebut di penutup wawancara masih perlu dilakukan (uji coba dengan beberapa warga dan perangkat desa).
 - Transkrip memuat bagian yang kurang jelas (tahun perbaikan listrik, nama kantor PLN, angka anggaran). Bagian tersebut tidak dipakai sebagai dasar fitur.
-- Daftar dusun, nama desa, dan kontak pada data contoh adalah data fiktif. Isi dengan data desa sebenarnya lewat menu **Pengaturan Desa**.
+- Kontak, akun, dan isi pengaduan pada data contoh adalah data fiktif. Nama desa dan daftar dusun awal dapat diubah lewat menu **Pengaturan Desa**.

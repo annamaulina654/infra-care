@@ -70,7 +70,7 @@ Lingkup data: masyarakat = miliknya; perangkat = dusunnya + yang ia input; admin
 - DELETE /api/dusun/:id → `{ok:true}`; 409 bila dipakai pengaduan atau pengguna
 
 ## Skema tabel dan data contoh
-Lihat [ERD.md](ERD.md). Data contoh dibuat oleh `npm run seed`: 4 dusun (Dusun Krajan, Tengah, Barat, Timur), 5 akun demo (kata sandi `password123`), dan 12 pengaduan di semua kategori dan status.
+Lihat [ERD.md](ERD.md). Data contoh dibuat oleh `npm run seed`: 7 dusun (Dusun Sumber Gundang, Langgali, Langger, Palanggeren, Pakes, Nungburung, Gibugen), 5 akun demo (kata sandi `password123`), dan 12 pengaduan di semua kategori dan status.
 
 ## Ketentuan tambahan
 - users: kolom baru `aktif boolean default true` dan `foto text null` (foto profil data URL jpeg/png, maks ~400.000 karakter).

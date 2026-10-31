@@ -8,14 +8,22 @@ const { pool } = require('./src/db');
 const tahun = new Date().getFullYear();
 const PASSWORD_DEMO = 'password123';
 
-// Nama desa dan dusun di bawah hanya contoh; ubah lewat menu Pengaturan setelah login sebagai admin.
+// Nama desa dan dusun di bawah adalah data awal; ubah lewat menu Pengaturan setelah login sebagai admin.
 const PENGATURAN = {
-  nama_desa: 'Desa Sumber Harapan',
-  alamat: 'Kantor Desa Sumber Harapan, Kecamatan Contoh, Kabupaten Contoh',
+  nama_desa: 'Desa Banyoneng Laok',
+  alamat: 'Kantor Desa Banyoneng Laok, Kecamatan Contoh, Kabupaten Contoh',
   jam: 'Senin–Jumat, 08.00–15.00',
   telepon: '',
 };
-const DUSUN = ['Dusun Krajan', 'Dusun Tengah', 'Dusun Barat', 'Dusun Timur'];
+const DUSUN = [
+  'Dusun Sumber Gundang',
+  'Dusun Langgali',
+  'Dusun Langger',
+  'Dusun Palanggeren',
+  'Dusun Pakes',
+  'Dusun Nungburung',
+  'Dusun Gibugen',
+];
 
 // Urutan status normal. "Diteruskan ke Instansi" dan "Ditolak" punya jalur sendiri.
 const ALUR = ['Diterima', 'Diverifikasi', 'Masuk Perencanaan', 'Dalam Perbaikan', 'Selesai'];
@@ -30,9 +38,9 @@ async function buatPengguna(hash) {
     (await pool.query('insert into users(nama,email,password,role,dusun) values($1,$2,$3,$4,$5) returning id',
       [nama, email, hash, role, dusun])).rows[0].id;
   return {
-    warga: await tambah('Siti Aminah', 'warga@desa.id', 'masyarakat', 'Dusun Krajan'),
-    warga2: await tambah('Ahmad Fauzi', 'warga2@desa.id', 'masyarakat', 'Dusun Timur'),
-    perangkat: await tambah('Hasan (Kepala Dusun Tengah)', 'perangkat@desa.id', 'perangkat', 'Dusun Tengah'),
+    warga: await tambah('Siti Aminah', 'warga@desa.id', 'masyarakat', 'Dusun Sumber Gundang'),
+    warga2: await tambah('Ahmad Fauzi', 'warga2@desa.id', 'masyarakat', 'Dusun Palanggeren'),
+    perangkat: await tambah('Hasan (Kepala Dusun Langgali)', 'perangkat@desa.id', 'perangkat', 'Dusun Langgali'),
     sekdes: await tambah('Budi Santoso (Sekretaris Desa)', 'sekdes@desa.id', 'admin', null),
     kades: await tambah('Kepala Desa (Klebun)', 'kades@desa.id', 'kades', null),
   };
@@ -41,18 +49,18 @@ async function buatPengguna(hash) {
 // Tiap baris: judul, kategori, dusun, lokasi, status, urgensi, perkiraan, pelapor, opsi, umur (hari), lat, lng.
 // opsi: { anonim, atasNama, instansi, catatan } semuanya opsional.
 const contohPengaduan = (u) => [
-  ['Jalan desa berlubang di depan balai dusun', 'Jalan', 'Dusun Krajan', 'Jalan utama Dusun Krajan, depan balai dusun', 'Dalam Perbaikan', 'Tinggi', '± 30 meter, perlu pengaspalan', u.warga, {}, 12, -7.0292, 112.7461],
-  ['Lampu penerangan jalan mati', 'Penerangan Jalan', 'Dusun Tengah', 'Jalan menuju musala Dusun Tengah', 'Masuk Perencanaan', 'Sedang', '5 titik lampu', u.warga, { catatan: 'Diusulkan ke rencana pembangunan desa, menunggu anggaran' }, 9, -7.0301, 112.7479],
-  ['Sumur warga mengering', 'Air & Kekeringan', 'Dusun Barat', 'RT 02 Dusun Barat', 'Diverifikasi', 'Tinggi', '± 15 kepala keluarga terdampak', u.perangkat, { atasNama: 'Bu Marlina' }, 6, -7.0315, 112.7502],
-  ['Tegangan listrik sering turun naik', 'Listrik (PLN)', 'Dusun Tengah', 'Permukiman RT 01 Dusun Tengah', 'Diteruskan ke Instansi', 'Sedang', null, u.warga, { anonim: true, instansi: 'PLN', catatan: 'Sudah dikoordinasikan dengan PLN, menunggu jadwal pengecekan' }, 5, -7.0288, 112.7455],
-  ['Atap ruang kelas bocor', 'Fasilitas Pendidikan', 'Dusun Krajan', 'Sekolah dasar di Dusun Krajan', 'Diteruskan ke Instansi', 'Tinggi', '2 ruang kelas', u.perangkat, { atasNama: 'Pak Rahmat (guru)', instansi: 'Dinas Pendidikan', catatan: 'Dinas Pendidikan diundang untuk meninjau lokasi' }, 3, -7.0279, 112.7468],
-  ['Jalan setapak ke sawah sudah diperbaiki', 'Jalan', 'Dusun Barat', 'Jalan setapak menuju area persawahan', 'Selesai', 'Rendah', '± 80 meter', u.warga, { catatan: 'Perbaikan selesai dikerjakan secara gotong royong' }, 20, -7.0322, 112.7511],
-  ['Puskesmas pembantu kekurangan air bersih', 'Fasilitas Kesehatan', 'Dusun Timur', 'Pustu Dusun Timur', 'Diterima', 'Sedang', null, u.warga2, {}, 1, -7.0335, 112.7533],
-  ['Saluran irigasi tersumbat sampah', 'Lainnya', 'Dusun Timur', 'Saluran irigasi dekat lapangan', 'Diterima', 'Rendah', null, u.warga2, {}, 0, null, null],
-  ['Lampu jalan pertigaan sudah menyala lagi', 'Penerangan Jalan', 'Dusun Krajan', 'Pertigaan Dusun Krajan', 'Selesai', 'Sedang', '2 titik lampu', u.warga2, { catatan: 'Lampu diganti oleh perangkat desa' }, 25, -7.0285, 112.7449],
-  ['Jembatan bambu di lahan pribadi lapuk', 'Jalan', 'Dusun Barat', 'Tepi sungai kecil Dusun Barat', 'Ditolak', 'Rendah', null, u.warga2, { catatan: 'Berada di lahan pribadi, bukan kewenangan desa' }, 14, -7.0318, 112.7496],
-  ['Air PDAM keruh sejak seminggu', 'Air & Kekeringan', 'Dusun Tengah', 'Jalur pipa Dusun Tengah', 'Diteruskan ke Instansi', 'Sedang', null, u.warga, { instansi: 'PDAM', catatan: 'Laporan sudah disampaikan ke PDAM' }, 7, -7.0296, 112.7484],
-  ['Jalan lingkungan rusak parah', 'Jalan', 'Dusun Tengah', 'Gang 3 Dusun Tengah', 'Masuk Perencanaan', 'Tinggi', '± 120 meter', u.perangkat, { atasNama: 'Pak Samsul', catatan: 'Masuk usulan musyawarah desa' }, 4, -7.0306, 112.7490],
+  ['Jalan desa berlubang di depan balai dusun', 'Jalan', 'Dusun Sumber Gundang', 'Jalan utama Dusun Sumber Gundang, depan balai dusun', 'Dalam Perbaikan', 'Tinggi', '± 30 meter, perlu pengaspalan', u.warga, {}, 12, -7.0292, 112.7461],
+  ['Lampu penerangan jalan mati', 'Penerangan Jalan', 'Dusun Langgali', 'Jalan menuju musala Dusun Langgali', 'Masuk Perencanaan', 'Sedang', '5 titik lampu', u.warga, { catatan: 'Diusulkan ke rencana pembangunan desa, menunggu anggaran' }, 9, -7.0301, 112.7479],
+  ['Sumur warga mengering', 'Air & Kekeringan', 'Dusun Langger', 'RT 02 Dusun Langger', 'Diverifikasi', 'Tinggi', '± 15 kepala keluarga terdampak', u.perangkat, { atasNama: 'Bu Marlina' }, 6, -7.0315, 112.7502],
+  ['Tegangan listrik sering turun naik', 'Listrik (PLN)', 'Dusun Langgali', 'Permukiman RT 01 Dusun Langgali', 'Diteruskan ke Instansi', 'Sedang', null, u.warga, { anonim: true, instansi: 'PLN', catatan: 'Sudah dikoordinasikan dengan PLN, menunggu jadwal pengecekan' }, 5, -7.0288, 112.7455],
+  ['Atap ruang kelas bocor', 'Fasilitas Pendidikan', 'Dusun Sumber Gundang', 'Sekolah dasar di Dusun Sumber Gundang', 'Diteruskan ke Instansi', 'Tinggi', '2 ruang kelas', u.perangkat, { atasNama: 'Pak Rahmat (guru)', instansi: 'Dinas Pendidikan', catatan: 'Dinas Pendidikan diundang untuk meninjau lokasi' }, 3, -7.0279, 112.7468],
+  ['Jalan setapak ke sawah sudah diperbaiki', 'Jalan', 'Dusun Langger', 'Jalan setapak menuju area persawahan', 'Selesai', 'Rendah', '± 80 meter', u.warga, { catatan: 'Perbaikan selesai dikerjakan secara gotong royong' }, 20, -7.0322, 112.7511],
+  ['Puskesmas pembantu kekurangan air bersih', 'Fasilitas Kesehatan', 'Dusun Palanggeren', 'Pustu Dusun Palanggeren', 'Diterima', 'Sedang', null, u.warga2, {}, 1, -7.0335, 112.7533],
+  ['Saluran irigasi tersumbat sampah', 'Lainnya', 'Dusun Palanggeren', 'Saluran irigasi dekat lapangan', 'Diterima', 'Rendah', null, u.warga2, {}, 0, null, null],
+  ['Lampu jalan pertigaan sudah menyala lagi', 'Penerangan Jalan', 'Dusun Sumber Gundang', 'Pertigaan Dusun Sumber Gundang', 'Selesai', 'Sedang', '2 titik lampu', u.warga2, { catatan: 'Lampu diganti oleh perangkat desa' }, 25, -7.0285, 112.7449],
+  ['Jembatan bambu di lahan pribadi lapuk', 'Jalan', 'Dusun Langger', 'Tepi sungai kecil Dusun Langger', 'Ditolak', 'Rendah', null, u.warga2, { catatan: 'Berada di lahan pribadi, bukan kewenangan desa' }, 14, -7.0318, 112.7496],
+  ['Air PDAM keruh sejak seminggu', 'Air & Kekeringan', 'Dusun Langgali', 'Jalur pipa Dusun Langgali', 'Diteruskan ke Instansi', 'Sedang', null, u.warga, { instansi: 'PDAM', catatan: 'Laporan sudah disampaikan ke PDAM' }, 7, -7.0296, 112.7484],
+  ['Jalan lingkungan rusak parah', 'Jalan', 'Dusun Langgali', 'Gang 3 Dusun Langgali', 'Masuk Perencanaan', 'Tinggi', '± 120 meter', u.perangkat, { atasNama: 'Pak Samsul', catatan: 'Masuk usulan musyawarah desa' }, 4, -7.0306, 112.7490],
 ];
 
 async function isiPengaduan(u) {
@@ -90,7 +98,7 @@ async function isiNotifikasi(u) {
       `Pengaduan dengan nomor ADU-${tahun}-00001 telah diterima oleh sistem.`,
       `Status pengaduan ADU-${tahun}-00001 telah berubah menjadi "Dalam Perbaikan".`,
       u.sekdes,
-      `Pengaduan baru ADU-${tahun}-00003: Sumur warga mengering (Dusun Barat).`]);
+      `Pengaduan baru ADU-${tahun}-00003: Sumur warga mengering (Dusun Langger).`]);
 }
 
 (async () => {

@@ -44,8 +44,8 @@ Gunakan `npm install`, bukan `npm ci`: berkas `package-lock.json` sengaja tidak 
 
 | Peran | Email |
 |---|---|
-| Warga (Dusun Krajan) | warga@desa.id |
-| Perangkat desa / kepala dusun (Dusun Tengah) | perangkat@desa.id |
+| Warga (Dusun Sumber Gundang) | warga@desa.id |
+| Perangkat desa / kepala dusun (Dusun Langgali) | perangkat@desa.id |
 | Sekretaris desa (admin) | sekdes@desa.id |
 | Kepala desa | kades@desa.id |
 
@@ -67,7 +67,7 @@ Uji ini mengubah data (membuat pengaduan dan pengguna). Jalankan `npm run seed` 
 - **Nama desa, alamat, jam layanan, telepon, daftar dusun:** login sebagai sekretaris desa, buka menu **Pengaturan Desa**. Tidak perlu mengubah kode.
 - **Titik awal peta:** `frontend/src/config.js` (`PUSAT_PETA`), isi dengan koordinat kantor desa.
 - **Nama aplikasi:** `frontend/src/config.js` (`APP_NAME`) dan `<title>` di `frontend/index.html`.
-- Nama desa awal pada data contoh ("Desa Sumber Harapan") ada di `backend/seed.js`.
+- Nama desa awal pada data contoh ("Desa Banyoneng Laok") ada di `backend/seed.js`.
 
 ## Deploy ke Vercel
 
