@@ -14,8 +14,8 @@ export const DESA_CADANGAN = {
 };
 
 // Titik awal peta [latitude, longitude]. Ganti dengan koordinat kantor desa.
-export const PUSAT_PETA = [-7.0292, 112.7461];
-export const ZOOM_AWAL = 14;
+export const PUSAT_PETA = [-6.982046710749073, 112.96781073235321];
+export const ZOOM_AWAL = 15;
 
 // Batas ukuran foto setelah dikompres di browser (karakter data URL, ± 2 MB).
 export const FOTO_MAKS_SISI = 1280;
