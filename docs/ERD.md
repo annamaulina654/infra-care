@@ -6,6 +6,7 @@ Sumber: `backend/schema.sql`. Diagram memakai sintaks Mermaid, tampil otomatis d
 erDiagram
     USERS ||--o{ COMPLAINTS : "membuat"
     USERS ||--o{ NOTIFICATIONS : "menerima"
+    USERS ||--o{ PUSH_SUBSCRIPTIONS : "mendaftarkan perangkat"
     COMPLAINTS ||--o{ COMPLAINT_LOGS : "memiliki riwayat"
     DUSUN ||..o{ USERS : "tempat tinggal (nama)"
     DUSUN ||..o{ COMPLAINTS : "lokasi (nama)"
@@ -65,6 +66,14 @@ erDiagram
         text judul
         text isi
         boolean dibaca
+        timestamptz created_at
+    }
+    PUSH_SUBSCRIPTIONS {
+        int id PK
+        int user_id FK
+        text endpoint UK
+        text p256dh
+        text auth
         timestamptz created_at
     }
 ```

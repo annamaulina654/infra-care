@@ -6,6 +6,10 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { DesaProvider } from './context/DesaContext.jsx';
 import './index.css';
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+}
+
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>

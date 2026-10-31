@@ -53,7 +53,14 @@ const MAKS_FOTO_PROFIL = 400_000;
 // Jabatan yang ditampilkan di riwayat publik (nama pegawai tidak dimunculkan).
 const JABATAN = { admin: 'Sekretaris Desa', kades: 'Kepala Desa', perangkat: 'Perangkat Desa', masyarakat: 'Warga' };
 
+const VAPID = {
+  publik: (process.env.VAPID_PUBLIC_KEY || '').trim(),
+  privat: (process.env.VAPID_PRIVATE_KEY || '').trim(),
+  subjek: (process.env.VAPID_SUBJECT || 'mailto:admin@desa.id').trim(),
+};
+
 module.exports = {
+  VAPID,
   JABATAN, DATABASE_URL, JWT_SECRET, ROLES, KATEGORI, URGENSI, STATUS, TRANSISI, MAKS_FOTO, MAKS_FOTO_PROFIL,
   IS_PRODUCTION: process.env.NODE_ENV === 'production',
 };

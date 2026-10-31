@@ -25,6 +25,12 @@ Ringkasan untuk laporan: apa yang diganti dan mengapa.
 - Data publik tidak memuat nama pelapor, foto, deskripsi, maupun lokasi; riwayat publik hanya menyebut jabatan (bukan nama pegawai) pada catatan perubahan status.
 - Pesan galat 500 tidak membocorkan detail teknis.
 
+## Notifikasi push
+
+- Web Push (standar W3C, tanpa layanan berbayar): service worker `frontend/public/sw.js`, manifest PWA, kartu "Aktifkan notifikasi" di halaman Notifikasi, tabel `push_subscriptions`, dan layanan `backend/src/services/push.js`.
+- Izin tidak diminta otomatis; hanya saat tombol Aktifkan ditekan. Keluar dari akun melepas langganan perangkat itu.
+- Bila kunci VAPID tidak diisi, fitur push mati dan kartunya tidak muncul; notifikasi di dalam aplikasi tetap bekerja.
+
 ## Perbaikan galat yang ditemukan pada versi awal
 
 - Pemilihan lokasi di peta tidak mengisi kolom lokasi karena dua pembaruan state berurutan saling menimpa.

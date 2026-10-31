@@ -988,4 +988,46 @@ describe('API pengaduan desa', () => {
       assert.ok(!(await get('/public/info')).data.dusun.includes('Dusun Sementara'));
     });
   });
+  describe('push (pendaftaran perangkat)', () => {
+    const sub = (n) => ({ endpoint: `https://push.example.test/send/${n}`, keys: { p256dh: 'BPkunciPublikContoh', auth: 'rahasiaAuth' } });
+
+    it('wajib login', async () => {
+      assert.equal((await get('/push/key')).status, 401);
+      assert.equal((await post('/push/subscribe', sub(1))).status, 401);
+      assert.equal((await post('/push/unsubscribe', { endpoint: sub(1).endpoint })).status, 401);
+      assert.equal((await post('/push/test', {})).status, 401);
+    });
+
+    it('key: aktif + kunci publik bila VAPID diatur, selain itu aktif=false', async () => {
+      const r = await get('/push/key', T.warga);
+      assert.equal(r.status, 200);
+      assert.equal(typeof r.data.aktif, 'boolean');
+      if (r.data.aktif) assert.ok(r.data.key && r.data.key.length > 0); else assert.equal(r.data.key, null);
+      T.pushAktif = r.data.aktif;
+    });
+
+    it('subscribe: memvalidasi data, lalu menyimpan (idempoten)', async (t) => {
+      if (!T.pushAktif) {
+        assert.equal((await post('/push/subscribe', sub(1), T.warga)).status, 503);
+        assert.equal((await post('/push/test', {}, T.warga)).status, 503);
+        return t.skip('VAPID tidak diatur: hanya 503 yang diuji');
+      }
+      for (const buruk of [undefined, {}, { endpoint: 'x' }, { endpoint: 'http://tidak-aman.test/a', keys: sub(1).keys },
+        { endpoint: sub(1).endpoint }, { endpoint: sub(1).endpoint, keys: { p256dh: 'a' } },
+        { endpoint: 'https://a.test/' + 'x'.repeat(2100), keys: sub(1).keys }]) {
+        assert.equal((await api('POST', '/push/subscribe', { token: T.warga, body: buruk ?? {} })).status, 400);
+      }
+      assert.equal((await post('/push/subscribe', sub(1), T.warga)).status, 201);
+      assert.equal((await post('/push/subscribe', sub(1), T.warga)).status, 201, 'ulang tidak error');
+      assert.equal((await post('/push/subscribe', sub(1), T.warga2)).status, 201);
+    });
+
+    it('unsubscribe: hanya menghapus milik sendiri; endpoint wajib', async (t) => {
+      if (!T.pushAktif) return t.skip('VAPID tidak diatur');
+      assert.equal((await post('/push/unsubscribe', {}, T.warga)).status, 400);
+      assert.deepEqual((await post('/push/unsubscribe', { endpoint: sub(1).endpoint }, T.warga)).data, { ok: true });
+      assert.deepEqual((await post('/push/unsubscribe', { endpoint: sub(1).endpoint }, T.warga2)).data, { ok: true });
+      assert.deepEqual((await post('/push/unsubscribe', { endpoint: sub(1).endpoint }, T.warga2)).data, { ok: true });
+    });
+  });
 });

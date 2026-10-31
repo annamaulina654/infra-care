@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Kartu, JudulHalaman } from '../../components/ui/Kartu.jsx';
 import Tombol from '../../components/ui/Tombol.jsx';
 import { Memuat, Galat, Kosong } from '../../components/ui/Status.jsx';
+import KartuPush from '../../components/complaints/KartuPush.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { useJudul } from '../../hooks/useMisc.js';
 import { api } from '../../lib/api.js';
@@ -34,6 +35,7 @@ export default function Notifikasi() {
     <>
       <JudulHalaman ikon={IkonLonceng} judul="Notifikasi" ket={data ? (belum ? `${belum} belum dibaca` : 'Semua sudah dibaca') : undefined}
         aksi={belum > 0 ? <Tombol varian="garis" ikon={IkonCentang} onClick={tandaiSemua}>Tandai semua dibaca</Tombol> : null} />
+      <KartuPush />
       <Kartu className="p-0">
         {loading && !data && <Memuat />}
         {error && <Galat pesan={error} ulangi={reload} />}

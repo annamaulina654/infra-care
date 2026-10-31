@@ -75,6 +75,17 @@ Uji ini mengubah data (membuat pengaduan dan pengguna). Jalankan `npm run seed` 
 2. Di Vercel, impor repositori ini. Tambahkan environment variable `DATABASE_URL` dan `JWT_SECRET` (teks acak minimal 32 karakter; wajib di production, server menolak start tanpa itu).
 3. Jalankan seed sekali dari laptop ke database cloud: `DATABASE_URL="..." npm run seed` di folder `backend`.
 
+## Notifikasi push (opsional)
+
+Agar notifikasi muncul di layar HP/komputer walau aplikasi tertutup:
+
+1. Di folder `backend`: `npm install`, lalu `npm run vapid`. Salin tiga baris yang tercetak.
+2. Tempel di `backend/.env` (lokal) dan di Environment Variables Vercel: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (isi `mailto:` dengan email Anda).
+3. Database baru: `npm run seed` sudah membuat tabelnya. Database yang sudah berisi data (mis. Supabase): jalankan isi `backend/migrasi-push.sql` di SQL Editor, tanpa seed ulang.
+4. Redeploy. Buka halaman Notifikasi, tekan **Aktifkan**, izinkan, lalu **Kirim percobaan**.
+
+Push butuh HTTPS (Vercel sudah) dan izin dari pengguna. Di iPhone/iPad (iOS 16.4+), situs harus dipasang dulu lewat Bagikan → Tambah ke Layar Utama. Tanpa kunci VAPID, fitur ini mati dan sisanya tetap berjalan. Uji pengiriman: `npm run test:push` di folder `backend`.
+
 Foto pengaduan disimpan sebagai data URL di database (dikompres di browser hingga sisi terpanjang 1280 px), karena penyimpanan berkas di Vercel tidak permanen. Untuk volume besar, pindahkan ke object storage.
 
 ## Peran dan hak akses

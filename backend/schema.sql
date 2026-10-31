@@ -1,6 +1,6 @@
 -- Skema database sistem pengaduan infrastruktur desa.
 -- PERINGATAN: file ini menghapus semua tabel lama lalu membuatnya ulang (dipakai oleh `npm run seed`).
-drop table if exists notifications, complaint_logs, complaints, dusun, settings, users cascade;
+drop table if exists push_subscriptions, notifications, complaint_logs, complaints, dusun, settings, users cascade;
 drop sequence if exists complaint_seq;
 create sequence complaint_seq start 1;
 
@@ -82,3 +82,13 @@ create table notifications(
   created_at timestamptz default now()
 );
 create index notifications_user_idx on notifications(user_id);
+
+create table push_subscriptions(
+  id serial primary key,
+  user_id int not null references users(id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz default now()
+);
+create index push_subscriptions_user_idx on push_subscriptions(user_id);

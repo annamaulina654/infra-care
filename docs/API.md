@@ -52,6 +52,16 @@ Lingkup data: masyarakat = miliknya; perangkat = dusunnya + yang ia input; admin
 - POST /api/notifications/:id/read → `{ok:true}`; 404 bila tidak ada atau bukan milik pengguna
 - POST /api/notifications/read-all → `{ok:true}`
 
+
+### Notifikasi push (`/api/push`, wajib login)
+
+- GET /api/push/key → `{aktif, key}`; `aktif:false` dan `key:null` bila server belum diberi kunci VAPID
+- POST /api/push/subscribe `{endpoint, keys:{p256dh, auth}}` → 201 `{ok:true}`; 400 bila tidak valid (endpoint harus `https://`); 503 bila push belum diaktifkan. Satu endpoint = satu perangkat; bila perangkat dipakai akun lain, langganan pindah ke akun itu
+- POST /api/push/unsubscribe `{endpoint}` → `{ok:true}` (hanya menghapus langganan milik pengguna itu)
+- POST /api/push/test → `{terkirim, gagal}`; mengirim notifikasi percobaan ke semua perangkat pengguna. 503 bila push belum diaktifkan
+
+Push dikirim otomatis bersamaan dengan notifikasi di dalam aplikasi (pengaduan diterima, pengaduan baru untuk sekdes, status berubah, tanggapan baru). Langganan yang ditolak layanan push dengan 404/410 dihapus otomatis.
+
 ## Laporan [login] (admin|kades)
 - GET /api/reports/summary?dari=YYYY-MM-DD&sampai=YYYY-MM-DD → `{periode:{dari,sampai},total,per_status:[{status,n}],per_kategori:[{kategori,n}],per_dusun:[{dusun,n}],per_instansi:[{instansi,n}],rata_hari_selesai:number|null}`
   dari/sampai opsional (default: semua waktu); format salah → 400. `rata_hari_selesai` = rata-rata hari dari created_at ke log "Selesai" (1 desimal).

@@ -23,6 +23,7 @@ app.use(express.json({ limit: '4mb' })); // cukup untuk satu foto yang sudah dik
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/public', require('./routes/public'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/push', require('./routes/push'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api', require('./routes/complaints'));   // /stats dan /complaints...

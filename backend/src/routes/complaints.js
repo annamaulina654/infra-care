@@ -7,6 +7,7 @@ const { KATEGORI, URGENSI, STATUS, TRANSISI, MAKS_FOTO, JABATAN } = require('../
 const { teks, angka, halaman, periksaFoto } = require('../utils/validate');
 const { buatFilter, polaCari } = require('../utils/filter');
 const { batasi, bolehLihat, rapikan } = require('../utils/access');
+const { notifikasiUser, notifikasiRole } = require('../services/notifikasi');
 
 const router = express.Router();
 const PENGELOLA = ['admin', 'kades'];
@@ -125,11 +126,9 @@ router.post('/complaints', auth(['masyarakat', 'perangkat']), wrap(async (req, r
       perkiraan, urgensi, anonim, pelaporNama, req.user.id]);
 
   await q("insert into complaint_logs(complaint_id,status,catatan) values($1,'Diterima','Pengaduan diterima oleh sistem')", [c.id]);
-  await q("insert into notifications(user_id,tipe,judul,isi) values($1,'Pengaduan','Pengaduan Diterima',$2)",
-    [req.user.id, `Pengaduan dengan nomor ${kode} telah diterima oleh sistem.`]);
+  await notifikasiUser(req.user.id, 'Pengaduan', 'Pengaduan Diterima', `Pengaduan dengan nomor ${kode} telah diterima oleh sistem.`);
   // Sekretaris desa perlu tahu ada pengaduan baru untuk diverifikasi.
-  await q("insert into notifications(user_id,tipe,judul,isi) select id,'Pengaduan','Pengaduan Baru',$1 from users where role='admin'",
-    [`Pengaduan baru ${kode}: ${judul} (${dusun}).`]);
+  await notifikasiRole('admin', 'Pengaduan', 'Pengaduan Baru', `Pengaduan baru ${kode}: ${judul} (${dusun}).`);
 
   res.status(201).json({ id: c.id, kode: c.kode });
 }));
@@ -170,8 +169,7 @@ router.patch('/complaints/:id/status', auth(PENGELOLA), wrap(async (req, res) =>
     [status, instansi || null, lama.id]);
   const catatanLog = catatan || (instansi ? `Diteruskan ke ${instansi}` : `Status diubah oleh ${JABATAN[req.user.role]}`);
   await q('insert into complaint_logs(complaint_id,status,catatan) values($1,$2,$3)', [lama.id, status, catatanLog]);
-  await q("insert into notifications(user_id,tipe,judul,isi) values($1,'Update','Update Status Pengaduan',$2)",
-    [lama.user_id, `Status pengaduan ${lama.kode} telah berubah menjadi "${status}".`]);
+  await notifikasiUser(lama.user_id, 'Update', 'Update Status Pengaduan', `Status pengaduan ${lama.kode} telah berubah menjadi "${status}".`);
   res.json({ id: lama.id, kode: lama.kode, status });
 }));
 
@@ -185,8 +183,7 @@ router.post('/complaints/:id/tanggapan', auth(PENGELOLA), wrap(async (req, res) 
 
   await q('insert into complaint_logs(complaint_id,status,catatan) values($1,$2,$3)', [c.id, c.status, catatan]);
   await q('update complaints set updated_at=now() where id=$1', [c.id]);
-  await q("insert into notifications(user_id,tipe,judul,isi) values($1,'Update','Tanggapan Baru',$2)",
-    [c.user_id, `Ada tanggapan baru untuk pengaduan ${c.kode}.`]);
+  await notifikasiUser(c.user_id, 'Update', 'Tanggapan Baru', `Ada tanggapan baru untuk pengaduan ${c.kode}.`);
   res.status(201).json({ ok: true });
 }));
 
