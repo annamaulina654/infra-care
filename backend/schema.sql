@@ -19,6 +19,7 @@ create table users(
   dusun text,
   aktif boolean not null default true,
   foto text,
+  setuju_privasi boolean not null default false,
   created_at timestamptz default now()
 );
 
@@ -53,6 +54,7 @@ create table complaints(
   anonim boolean not null default false,
   pelapor_nama text,               -- diisi bila perangkat desa melapor atas nama warga
   instansi text,                   -- diisi bila status "Diteruskan ke Instansi"
+  setuju_privasi boolean not null default false,
   user_id int not null references users(id),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -68,6 +70,7 @@ create table complaint_logs(
   complaint_id int references complaints(id) on delete cascade,
   status text,
   catatan text,
+  oleh text,                       -- sistem, warga, perangkat, admin, kades
   created_at timestamptz default now()
 );
 create index complaint_logs_complaint_idx on complaint_logs(complaint_id);

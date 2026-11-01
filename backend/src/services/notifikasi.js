@@ -23,4 +23,17 @@ async function notifikasiRole(role, tipe, judul, isi) {
   await dorong(baris.map((b) => b.user_id), judul, isi);
 }
 
-module.exports = { notifikasiUser, notifikasiRole };
+// Ke perangkat desa yang bertugas di dusun tertentu. Dipakai saat ada pengaduan baru
+// atau pesan warga, supaya kepala dusun tidak hanya mengandalkan pantauan manual.
+async function notifikasiPerangkatDusun(dusun, tipe, judul, isi, kecualiUserId = null) {
+  if (!dusun) return;
+  const baris = await q(
+    `insert into notifications(user_id,tipe,judul,isi)
+     select id,$2,$3,$4 from users
+     where role='perangkat' and aktif and dusun=$1 and id <> coalesce($5,-1)
+     returning user_id`,
+    [dusun, tipe, judul, isi, kecualiUserId]);
+  await dorong(baris.map((b) => b.user_id), judul, isi);
+}
+
+module.exports = { notifikasiUser, notifikasiRole, notifikasiPerangkatDusun };

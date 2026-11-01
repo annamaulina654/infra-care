@@ -30,14 +30,18 @@ router.post('/login', wrap(async (req, res) => {
 }));
 
 // Pendaftaran publik selalu menghasilkan akun warga. Akun perangkat/admin/kades dibuat oleh admin.
-router.post('/register', wrap(async (req, res) => {
+router.post('/register', limiter.batasi({ nama: 'register', maks: 10, jendelaMs: 60 * 60 * 1000 }), wrap(async (req, res) => {
   const nama = teks(req.body?.nama, 100);
   const email = teks(req.body?.email, 200).toLowerCase();
   const dusun = teks(req.body?.dusun, 60);
   const password = String(req.body?.password || '');
+  const setujuPrivasi = req.body?.setuju_privasi === true || req.body?.setuju_privasi === 'true';
 
   if (!nama || !emailValid(email) || password.length < 6 || !dusun) {
     return res.status(400).json({ message: 'Nama, email yang valid, dusun, dan password (min. 6 karakter) wajib diisi' });
+  }
+  if (!setujuPrivasi) {
+    return res.status(400).json({ message: 'Persetujuan kebijakan privasi wajib dicentang' });
   }
   if (!(await dusunAda(dusun))) return res.status(400).json({ message: 'Dusun tidak dikenal' });
   if ((await q('select 1 from users where email=$1', [email])).length) {
@@ -45,7 +49,7 @@ router.post('/register', wrap(async (req, res) => {
   }
 
   const [u] = await q(
-    "insert into users(nama,email,password,role,dusun) values($1,$2,$3,'masyarakat',$4) returning *",
+    "insert into users(nama,email,password,role,dusun,setuju_privasi) values($1,$2,$3,'masyarakat',$4,true) returning *",
     [nama, email, bcrypt.hashSync(password, 10), dusun]
   );
   res.status(201).json(buatSesi(u));

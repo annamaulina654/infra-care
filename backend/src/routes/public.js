@@ -52,7 +52,7 @@ router.get('/complaints', wrap(async (req, res) => {
 router.get('/complaints/:kode', wrap(async (req, res) => {
   const [c] = await q(`select c.id, ${KOLOM_PUBLIK} from complaints c where c.kode=$1`, [req.params.kode]);
   if (!c) return res.status(404).json({ message: 'Pengaduan tidak ditemukan' });
-  const logs = await q('select status, catatan, created_at from complaint_logs where complaint_id=$1 order by created_at, id', [c.id]);
+  const logs = await q('select status, catatan, oleh, created_at from complaint_logs where complaint_id=$1 order by created_at, id', [c.id]);
   const { id, ...aman } = c;
   res.json({ ...aman, logs });
 }));

@@ -78,6 +78,7 @@ export default function LayoutPublik() {
             <ul className="mt-3 space-y-2 text-sm text-muted">
               {TAUTAN.map((t) => <li key={t.ke}><Link to={t.ke} className="hover:text-brand">{t.label}</Link></li>)}
               <li><Link to="/login" className="hover:text-brand">Masuk / Daftar</Link></li>
+              <li><Link to="/privasi" className="hover:text-brand">Kebijakan Privasi</Link></li>
             </ul>
           </div>
           <div>

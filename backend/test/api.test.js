@@ -60,7 +60,7 @@ function parseCsv(teks) {
 }
 
 const hariLalu = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
-const dasar = { judul: 'Jembatan kecil retak', kategori: 'Jalan', deskripsi: 'Retak di bagian tengah', lokasi: 'Dekat musala', dusun: 'Dusun Sumber Gundang', urgensi: 'Sedang' };
+const dasar = { judul: 'Jembatan kecil retak', kategori: 'Jalan', deskripsi: 'Retak di bagian tengah', lokasi: 'Dekat musala', dusun: 'Dusun Sumber Gundang', urgensi: 'Sedang', setuju_privasi: true };
 
 // Token tiap peran, diisi di before().
 const T = {};
@@ -134,25 +134,41 @@ describe('API pengaduan desa', () => {
     });
 
     it('register: validasi', async () => {
-      const ok = { nama: 'Warga Baru', email: 'baru@desa.id', password: 'abcdef', dusun: 'Dusun Langger' };
+      const ok = { nama: 'Warga Baru', email: 'baru@desa.id', password: 'abcdef', dusun: 'Dusun Langger', setuju_privasi: true };
       assert.equal((await post('/auth/register', { ...ok, dusun: '' })).status, 400);
       assert.equal((await post('/auth/register', { ...ok, email: 'bukan-email' })).status, 400);
       assert.equal((await post('/auth/register', { ...ok, password: '123' })).status, 400);
       assert.equal((await post('/auth/register', { ...ok, nama: '  ' })).status, 400);
+      const tanpaSetuju = await post('/auth/register', { ...ok, setuju_privasi: false });
+      assert.equal(tanpaSetuju.status, 400);
+      assert.match(tanpaSetuju.data.message, /privasi/i);
       const r = await post('/auth/register', { ...ok, dusun: 'Dusun Antah Berantah' });
       assert.equal(r.status, 400);
       assert.equal(r.data.message, 'Dusun tidak dikenal');
     });
 
     it('register: berhasil, email huruf kecil, peran selalu masyarakat, email ganda ditolak', async () => {
-      const r = await post('/auth/register', { nama: 'Warga Baru', email: 'BARU@Desa.ID', password: 'abcdef', dusun: 'Dusun Langger', role: 'admin' });
+      const r = await post('/auth/register', { nama: 'Warga Baru', email: 'BARU@Desa.ID', password: 'abcdef', dusun: 'Dusun Langger', role: 'admin', setuju_privasi: true });
       assert.equal(r.status, 201);
       assert.equal(r.data.user.role, 'masyarakat');
       assert.equal(r.data.user.email, 'baru@desa.id');
       assert.equal(r.data.user.dusun, 'Dusun Langger');
       assert.ok(r.data.token);
-      assert.equal((await post('/auth/register', { nama: 'X', email: 'baru@desa.id', password: 'abcdef', dusun: 'Dusun Langger' })).status, 400);
+      assert.equal((await post('/auth/register', { nama: 'X', email: 'baru@desa.id', password: 'abcdef', dusun: 'Dusun Langger', setuju_privasi: true })).status, 400);
       T.baru = r.data.token;
+    });
+
+    it('register dibatasi 10 percobaan per jam per alamat IP', async () => {
+      const ip = { 'x-forwarded-for': '203.0.113.77' };
+      const body = { nama: 'Warga Batas', email: 'batas@desa.id', password: 'abcdef', dusun: 'Dusun Langger', setuju_privasi: true };
+      // Sepuluh percobaan pertama tetap diproses (di sini gagal validasi karena email salah).
+      for (let i = 0; i < 10; i++) {
+        const r = await api('POST', '/auth/register', { body: { ...body, email: 'bukan-email' }, headers: ip });
+        assert.equal(r.status, 400, `percobaan ${i + 1}`);
+      }
+      const r = await api('POST', '/auth/register', { body, headers: ip });
+      assert.equal(r.status, 429);
+      assert.ok(Number(r.headers.get('retry-after')) > 0);
     });
 
     it('GET /auth/me mengembalikan user terbaru', async () => {
@@ -249,7 +265,7 @@ describe('API pengaduan desa', () => {
       assert.equal(r.data.status, 'Diteruskan ke Instansi');
       assert.equal(r.data.instansi, 'PLN');
       assert.equal(r.data.logs.length, 3);
-      assert.deepEqual(Object.keys(r.data.logs[0]).sort(), ['catatan', 'created_at', 'status']);
+      assert.deepEqual(Object.keys(r.data.logs[0]).sort(), ['catatan', 'created_at', 'oleh', 'status']);
       for (const kata of ['Siti', 'pelapor', 'user_id', 'foto', 'lokasi', 'deskripsi', '"id"']) assert.ok(!r.teks.includes(kata), `bocor: ${kata}`);
       assert.equal((await get('/public/complaints/NOPE')).status, 404);
     });
@@ -506,6 +522,8 @@ describe('API pengaduan desa', () => {
       const d = (await get(`/complaints/${r.data.kode}`, T.warga)).data;
       assert.equal(d.status, 'Diterima');
       assert.equal(d.logs.length, 1);
+      assert.equal(d.logs[0].oleh, 'sistem');
+      assert.equal(d.setuju_privasi, true);
       assert.equal(d.foto, null);
       assert.equal(d.pelapor, 'Siti Aminah');
     });
@@ -519,6 +537,9 @@ describe('API pengaduan desa', () => {
         const r = await post('/complaints', { ...dasar, ...k }, T.warga);
         assert.equal(r.status, 400, JSON.stringify(k));
       }
+      const tanpaSetuju = await post('/complaints', { ...dasar, setuju_privasi: false }, T.warga);
+      assert.equal(tanpaSetuju.status, 400);
+      assert.match(tanpaSetuju.data.message, /privasi/i);
       assert.equal((await post('/complaints', { ...dasar, dusun: undefined }, T.warga)).status, 201, 'dusun default dari akun');
     });
 
@@ -577,6 +598,39 @@ describe('API pengaduan desa', () => {
       const n = (await get('/notifications', T.admin)).data.filter((x) => x.judul === 'Pengaduan Baru');
       assert.ok(n.length >= 7, `hanya ${n.length}`);
     });
+
+    it('perangkat dusun diberi tahu pengaduan baru, kecuali laporan yang ia input sendiri', async () => {
+      const hitung = async () => (await get('/notifications', T.perangkat)).data
+        .filter((x) => x.judul === 'Pengaduan Baru di Dusun Anda').length;
+      const awal = await hitung();
+
+      const sendiri = await post('/complaints', { ...dasar, dusun: 'Dusun Langgali', pelapor_nama: 'Pak Samsul' }, T.perangkat);
+      assert.equal(sendiri.status, 201);
+      assert.equal(await hitung(), awal, 'pelapor perangkat tidak diberi notifikasi untuk laporannya sendiri');
+
+      const wargaLain = await post('/complaints', { ...dasar, dusun: 'Dusun Langgali' }, T.warga2);
+      assert.equal(wargaLain.status, 201);
+      assert.equal(await hitung(), awal + 1);
+      const n = (await get('/notifications', T.perangkat)).data
+        .find((x) => x.isi.includes(wargaLain.data.kode));
+      assert.ok(n, 'notifikasi memuat kode pengaduan');
+      assert.match(n.isi, /Dusun Langgali/);
+    });
+
+    it('pembuatan pengaduan dibatasi 20 per jam per pengguna', async () => {
+      const email = 'batas.pengaduan@desa.id';
+      const u = await post('/users', { nama: 'Warga Batas Lapor', email, password: 'abcdef', role: 'masyarakat', dusun: 'Dusun Palanggeren' }, T.admin);
+      assert.equal(u.status, 201);
+      const token = await masuk(email, 'abcdef');
+
+      for (let i = 0; i < 20; i++) {
+        const r = await post('/complaints', { ...dasar, judul: `Laporan batas ${i + 1}`, dusun: 'Dusun Palanggeren' }, token);
+        assert.equal(r.status, 201, `laporan ${i + 1}`);
+      }
+      const lebih = await post('/complaints', { ...dasar, judul: 'Laporan ke-21', dusun: 'Dusun Palanggeren' }, token);
+      assert.equal(lebih.status, 429);
+      assert.ok(Number(lebih.headers.get('retry-after')) > 0);
+    });
   });
 
   // ================================================================== ubah status
@@ -614,8 +668,10 @@ describe('API pengaduan desa', () => {
       const d = (await get(`/complaints/${kode(7)}`, T.admin)).data;
       assert.equal(d.status, 'Diverifikasi');
       assert.equal(d.logs.at(-1).catatan, 'Sudah dicek di lokasi');
+      assert.equal(d.logs.at(-1).oleh, 'admin');
       const n = (await get('/notifications', T.warga2)).data;
       assert.ok(n.some((x) => x.isi.includes(kode(7)) && x.isi.includes('Diverifikasi')));
+      assert.ok(n.some((x) => x.isi.includes('Sudah dicek di lokasi')), 'catatan ikut di notifikasi');
     });
 
     it('teruskan ke instansi: wajib instansi; kades boleh; lalu Selesai', async () => {
@@ -626,7 +682,10 @@ describe('API pengaduan desa', () => {
       const d = (await get(`/complaints/${kode(7)}`, T.admin)).data;
       assert.equal(d.instansi, 'Dinas Kesehatan');
       assert.equal(d.logs.at(-1).catatan, 'Diteruskan ke Dinas Kesehatan');
+      assert.equal(d.logs.at(-1).oleh, 'kades');
       assert.deepEqual(d.next_status, ['Dalam Perbaikan', 'Selesai', 'Ditolak']);
+      const n = (await get('/notifications', T.warga2)).data;
+      assert.ok(n.some((x) => x.isi.includes('Dinas Kesehatan')), 'instansi tujuan ikut di notifikasi');
       assert.equal((await ubah(7, { status: 'Selesai', catatan: 'Sudah ditangani dinas' })).status, 200);
       assert.equal((await get(`/complaints/${kode(7)}`, T.admin)).data.instansi, 'Dinas Kesehatan', 'instansi tetap tercatat');
     });
@@ -635,6 +694,9 @@ describe('API pengaduan desa', () => {
       assert.equal((await ubah(8, { status: 'Ditolak' })).status, 400);
       assert.equal((await ubah(8, { status: 'Ditolak', catatan: 'ab' })).status, 400);
       assert.equal((await ubah(8, { status: 'Ditolak', catatan: 'Di luar kewenangan desa' })).status, 200);
+      const n = (await get('/notifications', T.warga2)).data;
+      assert.ok(n.some((x) => x.isi.includes('Ditolak') && x.isi.includes('Di luar kewenangan desa')), 'alasan penolakan ikut di notifikasi');
+      assert.equal((await get(`/complaints/${kode(8)}`, T.admin)).data.logs.at(-1).oleh, 'admin');
     });
 
     it('status final tidak bisa diubah lagi', async () => {
@@ -688,13 +750,49 @@ describe('API pengaduan desa', () => {
       assert.deepEqual(r.data, { ok: true });
       const d = (await get(`/complaints/${kode(1)}`, T.warga)).data;
       assert.equal(d.status, 'Dalam Perbaikan');
-      assert.deepEqual({ status: d.logs.at(-1).status, catatan: d.logs.at(-1).catatan }, { status: 'Dalam Perbaikan', catatan: 'Tim akan survei hari Jumat' });
+      assert.deepEqual({ status: d.logs.at(-1).status, catatan: d.logs.at(-1).catatan, oleh: d.logs.at(-1).oleh }, { status: 'Dalam Perbaikan', catatan: 'Tim akan survei hari Jumat', oleh: 'kades' });
       const n = (await get('/notifications', T.warga)).data;
-      assert.ok(n.some((x) => x.judul === 'Tanggapan Baru' && x.isi.includes(kode(1))));
+      assert.ok(n.some((x) => x.judul === 'Tanggapan Baru' && x.isi.includes(kode(1)) && x.isi.includes('Tim akan survei hari Jumat')));
     });
 
     it('boleh pada pengaduan berstatus final', async () => {
       assert.equal((await tanggapi(6, 'Terima kasih sudah dikerjakan bersama')).status, 201);
+    });
+  });
+
+  // ================================================================== pesan pelapor
+  describe('pesan pelapor (tambah informasi)', () => {
+    const kirim = (id, catatan, token = T.warga) => post(`/complaints/${id}/pesan`, { catatan }, token);
+
+    it('izin: hanya pelapor; peran lain dan tanpa login ditolak', async () => {
+      assert.equal((await kirim(2, 'Mohon dicek kembali', T.warga2)).status, 403);
+      assert.equal((await kirim(2, 'Mohon dicek kembali', T.perangkat)).status, 403);
+      assert.equal((await kirim(2, 'Mohon dicek kembali', T.admin)).status, 403);
+      assert.equal((await kirim(2, 'Mohon dicek kembali', null)).status, 401);
+    });
+
+    it('validasi: minimal 3 karakter, id tidak valid / tidak ada', async () => {
+      assert.equal((await kirim(2, 'ok')).status, 400);
+      assert.equal((await kirim(2, '   ')).status, 400);
+      assert.equal((await kirim('abc', 'Mohon dicek kembali')).status, 404);
+      assert.equal((await kirim(9999, 'Mohon dicek kembali')).status, 404);
+    });
+
+    it('pelapor menambah log tanpa mengubah status; admin dan perangkat dusun diberi tahu', async () => {
+      const r = await kirim(2, 'Pipa air mulai dipasang sore ini');
+      assert.equal(r.status, 201);
+      assert.deepEqual(r.data, { ok: true });
+
+      const d = (await get(`/complaints/${kode(2)}`, T.warga)).data;
+      assert.equal(d.status, 'Masuk Perencanaan');
+      const log = d.logs.at(-1);
+      assert.deepEqual({ status: log.status, catatan: log.catatan, oleh: log.oleh },
+        { status: 'Masuk Perencanaan', catatan: 'Pipa air mulai dipasang sore ini', oleh: 'masyarakat' });
+
+      for (const token of [T.admin, T.perangkat]) {
+        const n = (await get('/notifications', token)).data;
+        assert.ok(n.some((x) => x.judul === 'Pesan dari Pelapor' && x.isi.includes(kode(2)) && x.isi.includes('Pipa air mulai dipasang')), 'penerima pesan');
+      }
     });
   });
 
@@ -970,7 +1068,7 @@ describe('API pengaduan desa', () => {
     });
 
     it('dusun baru langsung bisa dipakai untuk daftar akun dan pengaduan', async () => {
-      const reg = await post('/auth/register', { nama: 'Warga Selatan', email: 'selatan@desa.id', password: 'abcdef', dusun: 'Dusun Selatan' });
+      const reg = await post('/auth/register', { nama: 'Warga Selatan', email: 'selatan@desa.id', password: 'abcdef', dusun: 'Dusun Selatan', setuju_privasi: true });
       assert.equal(reg.status, 201);
       const r = await post('/complaints', { ...dasar, dusun: 'Dusun Selatan' }, reg.data.token);
       assert.equal(r.status, 201);

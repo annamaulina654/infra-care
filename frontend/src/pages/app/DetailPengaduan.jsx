@@ -13,7 +13,8 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { useJudul } from '../../hooks/useMisc.js';
 import { api } from '../../lib/api.js';
 import { KATEGORI_INFO, PENGELOLA, STATUS_GAYA } from '../../lib/constants.js';
-import { IkonKiri, IkonLokasi, IkonUser, IkonPesan, IkonUbah, IkonKirim, IkonPeta } from '../../lib/icons.js';
+import { bagikanPengaduan, salinTeks, cetakBukti } from '../../lib/bagikan.js';
+import { IkonKiri, IkonLokasi, IkonUser, IkonPesan, IkonUbah, IkonKirim, IkonPeta, IkonSalin, IkonBagikan, IkonCetak } from '../../lib/icons.js';
 import { tgl } from '../../lib/format.js';
 
 const INSTANSI = ['PLN', 'Dinas PU / Bina Marga', 'Dinas Pendidikan', 'Dinas Kesehatan', 'PDAM', 'Kecamatan'];
@@ -30,11 +31,24 @@ export default function DetailPengaduan() {
   const [catatan, setCatatan] = useState('');
   const [instansi, setInstansi] = useState('');
   const [tanggapan, setTanggapan] = useState('');
+  const [pesan, setPesan] = useState('');
   const [galat, setGalat] = useState('');
+  const [galatPesan, setGalatPesan] = useState('');
   const [info, setInfo] = useState('');
   const [proses, setProses] = useState(false);
 
   const bukaStatus = () => { setBaru(c.next_status[0] || ''); setCatatan(''); setInstansi(''); setGalat(''); setDlgStatus(true); };
+
+  const salinKode = async () => {
+    const ok = await salinTeks(c.kode);
+    setInfo(ok ? `Kode ${c.kode} disalin. Tempel di catatan atau kirim ke keluarga Anda.` : 'Kode gagal disalin otomatis. Silakan salin secara manual.');
+  };
+
+  const bagikan = async () => {
+    const hasil = await bagikanPengaduan(c.kode);
+    if (hasil === 'disalin') setInfo('Tautan pelacakan disalin karena perangkat ini belum mendukung menu berbagi.');
+    else if (hasil === 'gagal') setInfo('Tautan gagal dibagikan. Gunakan tombol "Salin kode" sebagai gantinya.');
+  };
 
   const simpanStatus = async (e) => {
     e.preventDefault();
@@ -60,66 +74,131 @@ export default function DetailPengaduan() {
     } catch (err) { setGalat(err.message); } finally { setProses(false); }
   };
 
+  // Pelapor boleh menambah informasi/balasan tanpa mengubah status pengaduan.
+  const kirimPesan = async (e) => {
+    e.preventDefault();
+    setGalatPesan('');
+    setProses(true);
+    try {
+      await api(`/complaints/${c.id}/pesan`, { method: 'POST', body: { catatan: pesan.trim() } });
+      setPesan('');
+      setInfo('Informasi tambahan terkirim. Pemerintah desa sudah diberi tahu.');
+      reload();
+    } catch (err) { setGalatPesan(err.message); } finally { setProses(false); }
+  };
+
   if (loading && !c) return <Memuat />;
   if (error) return <Galat pesan={error} ulangi={reload} />;
   if (!c) return null;
 
   const Ikon = KATEGORI_INFO[c.kategori]?.ikon;
   const petaUrl = c.lat != null && c.lng != null ? `https://www.openstreetmap.org/?mlat=${c.lat}&mlon=${c.lng}#map=18/${c.lat}/${c.lng}` : null;
+  const pemilik = c.user_id === user.id;
 
   return (
     <>
-      <Link to="/app/pengaduan" className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-brand"><IkonKiri className="size-4" aria-hidden />Kembali ke daftar</Link>
-      {info && <Pesan jenis="sukses" className="mb-4">{info}</Pesan>}
+      {/* Hanya tampil saat dicetak: ringkasan sebagai tanda terima. */}
+      <div className="print-only">
+        <h1 className="text-xl font-extrabold">Tanda Terima Pengaduan</h1>
+        <p className="mt-1 text-sm">Kode pengaduan: <b>{c.kode}</b></p>
+        <table className="mt-4 w-full text-sm">
+          <tbody>
+            {[
+              ['Judul', c.judul],
+              ['Kategori', c.kategori],
+              ['Dusun', c.dusun],
+              ['Lokasi', c.lokasi],
+              ['Urgensi', c.urgensi],
+              ['Status', c.status],
+              ['Pelapor', c.pelapor],
+              ['Dilaporkan', tgl(c.created_at)],
+            ].map(([label, nilai]) => (
+              <tr key={label} className="border-b border-line">
+                <th className="w-36 py-2 text-left align-top font-semibold">{label}</th>
+                <td className="py-2 align-top">{nilai || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {c.instansi && <p className="mt-3 text-sm">Diteruskan ke: <b>{c.instansi}</b></p>}
+        <p className="mt-6 text-xs">Dicetak pada {tgl(new Date().toISOString())}. Simpan tanda terima ini dan bawa kodenya saat menghubungi kantor desa.</p>
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <Kartu>
-            <div className="flex items-start gap-4">
-              <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-soft text-brand">{Ikon && <Ikon className="size-6" aria-hidden />}</span>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-muted">{c.kode}</p>
-                <h1 className="text-xl font-extrabold leading-snug sm:text-2xl">{c.judul}</h1>
-                <div className="mt-2.5 flex flex-wrap gap-2"><LencanaStatus status={c.status} /><LencanaUrgensi urgensi={c.urgensi} /></div>
+      <div className="no-print">
+        <Link to="/app/pengaduan" className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-brand"><IkonKiri className="size-4" aria-hidden />Kembali ke daftar</Link>
+        {info && <Pesan jenis="sukses" className="mb-4">{info}</Pesan>}
+
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <Kartu>
+              <div className="flex items-start gap-4">
+                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-soft text-brand">{Ikon && <Ikon className="size-6" aria-hidden />}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-muted">{c.kode}</p>
+                  <h1 className="text-xl font-extrabold leading-snug sm:text-2xl">{c.judul}</h1>
+                  <div className="mt-2.5 flex flex-wrap gap-2"><LencanaStatus status={c.status} /><LencanaUrgensi urgensi={c.urgensi} /></div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Tombol varian="garis" ukuran="sm" ikon={IkonSalin} onClick={salinKode}>Salin kode</Tombol>
+                    <Tombol varian="garis" ukuran="sm" ikon={IkonBagikan} onClick={bagikan}>Bagikan</Tombol>
+                    <Tombol varian="garis" ukuran="sm" ikon={IkonCetak} onClick={cetakBukti}>Cetak bukti</Tombol>
+                  </div>
+                </div>
               </div>
-            </div>
-            <p className="mt-5 whitespace-pre-line text-sm leading-relaxed">{c.deskripsi}</p>
-            {c.foto && <img src={c.foto} alt={`Foto ${c.judul}`} className="mt-5 max-h-96 w-full rounded-xl object-cover" />}
-            <dl className="mt-5 grid gap-3 border-t border-line pt-5 text-sm sm:grid-cols-2">
-              <div className="flex gap-2"><IkonLokasi className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><div><dt className="text-xs text-muted">Lokasi</dt><dd className="font-semibold">{c.lokasi}, {c.dusun}</dd></div></div>
-              <div className="flex gap-2"><IkonUser className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><div><dt className="text-xs text-muted">Pelapor</dt><dd className="font-semibold">{c.pelapor}</dd></div></div>
-              <div><dt className="text-xs text-muted">Kategori</dt><dd className="font-semibold">{c.kategori}</dd></div>
-              <div><dt className="text-xs text-muted">Perkiraan</dt><dd className="font-semibold">{c.perkiraan || '-'}</dd></div>
-              <div><dt className="text-xs text-muted">Dilaporkan</dt><dd className="font-semibold">{tgl(c.created_at)}</dd></div>
-              {c.instansi && <div><dt className="text-xs text-muted">Diteruskan ke</dt><dd className="font-semibold">{c.instansi}</dd></div>}
-            </dl>
-            {petaUrl && <a href={petaUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:underline"><IkonPeta className="size-4" aria-hidden />Buka titik di peta</a>}
-          </Kartu>
+              <p className="mt-5 whitespace-pre-line text-sm leading-relaxed">{c.deskripsi}</p>
+              {c.foto && <img src={c.foto} alt={`Foto ${c.judul}`} className="mt-5 max-h-96 w-full rounded-xl object-cover" />}
+              <dl className="mt-5 grid gap-3 border-t border-line pt-5 text-sm sm:grid-cols-2">
+                <div className="flex gap-2"><IkonLokasi className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><div><dt className="text-xs text-muted">Lokasi</dt><dd className="font-semibold">{c.lokasi}, {c.dusun}</dd></div></div>
+                <div className="flex gap-2"><IkonUser className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><div><dt className="text-xs text-muted">Pelapor</dt><dd className="font-semibold">{c.pelapor}</dd></div></div>
+                <div><dt className="text-xs text-muted">Kategori</dt><dd className="font-semibold">{c.kategori}</dd></div>
+                <div><dt className="text-xs text-muted">Perkiraan</dt><dd className="font-semibold">{c.perkiraan || '-'}</dd></div>
+                <div><dt className="text-xs text-muted">Dilaporkan</dt><dd className="font-semibold">{tgl(c.created_at)}</dd></div>
+                {c.instansi && <div><dt className="text-xs text-muted">Diteruskan ke</dt><dd className="font-semibold">{c.instansi}</dd></div>}
+              </dl>
+              {petaUrl && <a href={petaUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:underline"><IkonPeta className="size-4" aria-hidden />Buka titik di peta</a>}
+            </Kartu>
 
-          <Kartu><h2 className="mb-5 text-base font-bold">Tahapan</h2><AlurStatus status={c.status} /></Kartu>
-          <Kartu><h2 className="mb-5 text-base font-bold">Riwayat</h2><RiwayatLog logs={c.logs} /></Kartu>
+            <Kartu><h2 className="mb-5 text-base font-bold">Tahapan</h2><AlurStatus status={c.status} /></Kartu>
+            <Kartu><h2 className="mb-5 text-base font-bold">Riwayat</h2><RiwayatLog logs={c.logs} /></Kartu>
+          </div>
+
+          {(pemilik || kelola) && (
+            <aside className="space-y-6">
+              {pemilik && (
+                <Kartu>
+                  <h2 className="flex items-center gap-2 text-base font-bold"><IkonPesan className="size-4 text-brand" aria-hidden />Tambah informasi</h2>
+                  <p className="mt-1 text-sm text-muted">Sampaikan perkembangan terbaru atau jawaban untuk petugas. Status pengaduan tidak berubah.</p>
+                  <form onSubmit={kirimPesan} className="mt-3 space-y-3">
+                    <label htmlFor="pesan" className="sr-only">Informasi tambahan</label>
+                    <textarea id="pesan" required minLength={3} maxLength={500} rows={4} value={pesan} onChange={(e) => setPesan(e.target.value)} placeholder="Mis. kerusakan bertambah parah setelah hujan." className="field resize-y" />
+                    <Tombol type="submit" penuh ikon={IkonKirim} memuat={proses && !dlgStatus}>Kirim informasi</Tombol>
+                  </form>
+                  {galatPesan && <p role="alert" className="mt-2 text-xs font-medium text-red-600">{galatPesan}</p>}
+                </Kartu>
+              )}
+
+              {kelola && (
+                <>
+                  <Kartu>
+                    <h2 className="text-base font-bold">Ubah status</h2>
+                    {c.next_status.length
+                      ? <><p className="mt-1 text-sm text-muted">Status sekarang <b>{c.status}</b>. Pelapor akan mendapat notifikasi.</p>
+                          <Tombol penuh className="mt-4" ikon={IkonUbah} onClick={bukaStatus}>Ubah status</Tombol></>
+                      : <p className="mt-1 text-sm text-muted">Pengaduan ini sudah berstatus akhir ({c.status}).</p>}
+                  </Kartu>
+                  <Kartu>
+                    <h2 className="flex items-center gap-2 text-base font-bold"><IkonPesan className="size-4 text-brand" aria-hidden />Beri tanggapan</h2>
+                    <form onSubmit={kirimTanggapan} className="mt-3 space-y-3">
+                      <label htmlFor="tanggapan" className="sr-only">Tanggapan</label>
+                      <textarea id="tanggapan" required minLength={3} maxLength={500} rows={4} value={tanggapan} onChange={(e) => setTanggapan(e.target.value)} placeholder="Mis. Tim akan survei hari Kamis." className="field resize-y" />
+                      <Tombol type="submit" penuh varian="garis" ikon={IkonKirim} memuat={proses && !dlgStatus}>Kirim tanggapan</Tombol>
+                    </form>
+                    {galat && !dlgStatus && <p role="alert" className="mt-2 text-xs font-medium text-red-600">{galat}</p>}
+                  </Kartu>
+                </>
+              )}
+            </aside>
+          )}
         </div>
-
-        {kelola && (
-          <aside className="space-y-6">
-            <Kartu>
-              <h2 className="text-base font-bold">Ubah status</h2>
-              {c.next_status.length
-                ? <><p className="mt-1 text-sm text-muted">Status sekarang <b>{c.status}</b>. Pelapor akan mendapat notifikasi.</p>
-                    <Tombol penuh className="mt-4" ikon={IkonUbah} onClick={bukaStatus}>Ubah status</Tombol></>
-                : <p className="mt-1 text-sm text-muted">Pengaduan ini sudah berstatus akhir ({c.status}).</p>}
-            </Kartu>
-            <Kartu>
-              <h2 className="flex items-center gap-2 text-base font-bold"><IkonPesan className="size-4 text-brand" aria-hidden />Beri tanggapan</h2>
-              <form onSubmit={kirimTanggapan} className="mt-3 space-y-3">
-                <label htmlFor="tanggapan" className="sr-only">Tanggapan</label>
-                <textarea id="tanggapan" required minLength={3} maxLength={500} rows={4} value={tanggapan} onChange={(e) => setTanggapan(e.target.value)} placeholder="Mis. Tim akan survei hari Kamis." className="field resize-y" />
-                <Tombol type="submit" penuh varian="garis" ikon={IkonKirim} memuat={proses && !dlgStatus}>Kirim tanggapan</Tombol>
-              </form>
-              {galat && !dlgStatus && <p role="alert" className="mt-2 text-xs font-medium text-red-600">{galat}</p>}
-            </Kartu>
-          </aside>
-        )}
       </div>
 
       <Dialog buka={dlgStatus} tutup={() => setDlgStatus(false)} judul="Ubah status pengaduan">

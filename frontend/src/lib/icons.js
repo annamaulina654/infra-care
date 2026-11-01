@@ -50,6 +50,8 @@ export {
   LuImage as IkonGambar,
   LuDownload as IkonUnduh,
   LuPrinter as IkonCetak,
+  LuCopy as IkonSalin,
+  LuShare2 as IkonBagikan,
   LuEye as IkonLihat,
   LuEyeOff as IkonSembunyi,
   LuTrash2 as IkonHapus,

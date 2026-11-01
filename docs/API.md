@@ -20,7 +20,7 @@ Kode pengaduan: `ADU-<tahun>-<5 digit>`.
 
 ## Auth
 - POST /api/auth/login `{email,password}` → `{token,user}`; 400 salah; 429 setelah 5 gagal / 15 menit (IP+email)
-- POST /api/auth/register `{nama,email,password(min6),dusun}` → 201 `{token,user}`; selalu role masyarakat; dusun harus ada di tabel dusun
+- POST /api/auth/register `{nama,email,password(min6),dusun,setuju_privasi:true}` → 201 `{token,user}`; selalu role masyarakat; dusun harus ada di tabel dusun; persetujuan privasi wajib; dibatasi 10 percobaan / jam / IP (429 + `Retry-After`)
 - [login] GET /api/auth/me → `user`
 - [login] PATCH /api/auth/me `{nama?, dusun?}` → `user`
 - [login] POST /api/auth/password `{password_lama,password_baru(min6)}` → `{ok:true}`; 400 bila lama salah
@@ -31,7 +31,7 @@ Kode pengaduan: `ADU-<tahun>-<5 digit>`.
 - GET /api/public/stats → `{total,selesai,proses,perencanaan}` (proses = bukan Selesai/Ditolak)
 - GET /api/public/complaints?status&kategori&dusun&q&page=1&limit=12 → `{data:[{kode,judul,kategori,dusun,status,urgensi,instansi,created_at,updated_at}],total,page,limit}`
   Tanpa nama pelapor, tanpa foto, tanpa deskripsi/lokasi/koordinat. limit maks 50. Urut terbaru.
-- GET /api/public/complaints/:kode → `{kode,judul,kategori,dusun,status,urgensi,instansi,created_at,updated_at,logs:[{status,catatan,created_at}]}`; 404 bila tidak ada
+- GET /api/public/complaints/:kode → `{kode,judul,kategori,dusun,status,urgensi,instansi,created_at,updated_at,logs:[{status,catatan,oleh,created_at}]}`; 404 bila tidak ada
 
 ## Pengaduan [login]
 Lingkup data: masyarakat = miliknya; perangkat = dusunnya + yang ia input; admin & kades = semua.
@@ -41,11 +41,12 @@ Lingkup data: masyarakat = miliknya; perangkat = dusunnya + yang ia input; admin
   `pelapor`: nama (atau `pelapor_nama` bila diinput perangkat); bila `anonim`: admin & pemilik melihat `"<nama> (anonim)"`, lainnya `"Anonim"`.
   `q` mencari di judul, kode, kategori, dusun (ilike).
 - GET /api/complaints/map → `[{kode,judul,kategori,status,urgensi,dusun,lat,lng}]` hanya yang punya koordinat, sesuai lingkup, maks 1000. (Rute ini harus didaftarkan SEBELUM `/:kode`.)
-- GET /api/complaints/:kode → item lengkap + `foto` (data URL atau null) + `logs:[{status,catatan,created_at}]` + `next_status:[...]` (hanya untuk admin/kades; array kosong untuk peran lain / status final). 403 di luar lingkup, 404 tidak ada.
-- POST /api/complaints (masyarakat|perangkat) `{judul(≤120),kategori,deskripsi(≤500),lokasi(≤300),dusun,lat?,lng?,perkiraan?,urgensi,anonim?,foto?(data URL jpeg/png ≤ ~2MB),pelapor_nama?(wajib bila perangkat)}` → 201 `{id,kode}`
-  Foto OPSIONAL. Dusun harus ada di tabel dusun. Notifikasi ke pembuat + semua admin.
-- PATCH /api/complaints/:id/status (admin|kades) `{status,catatan?,instansi?}` → `{id,kode,status}`; aturan TRANSISI di atas; log + notifikasi ke pemilik.
-- POST /api/complaints/:id/tanggapan (admin|kades) `{catatan(≥3)}` → 201 `{ok:true}`; menambah baris log dengan status saat ini + notifikasi tipe "Update" ke pemilik ("Ada tanggapan baru untuk pengaduan <kode>"). Tanggapan boleh diberikan pada status apa pun.
+- GET /api/complaints/:kode → item lengkap + `foto` (data URL atau null) + `logs:[{status,catatan,oleh,created_at}]` + `next_status:[...]` (hanya untuk admin/kades; array kosong untuk peran lain / status final). 403 di luar lingkup, 404 tidak ada. `oleh` menandai pengirim log: `sistem`, `masyarakat`, `perangkat`, `admin`, atau `kades` (baris lama bisa `null`).
+- POST /api/complaints (masyarakat|perangkat) `{judul(≤120),kategori,deskripsi(≤500),lokasi(≤300),dusun,lat?,lng?,perkiraan?,urgensi,anonim?,foto?(data URL jpeg/png ≤ ~2MB),pelapor_nama?(wajib bila perangkat),setuju_privasi:true}` → 201 `{id,kode}`
+  Foto OPSIONAL. Dusun harus ada di tabel dusun. Notifikasi ke pembuat, semua admin, dan perangkat desa di dusun terkait. Dibatasi 20 pembuatan / jam / pengguna (429 + `Retry-After`). Persetujuan privasi wajib.
+- PATCH /api/complaints/:id/status (admin|kades) `{status,catatan?,instansi?}` → `{id,kode,status}`; aturan TRANSISI di atas; log + notifikasi ke pemilik. Notifikasi memuat alasan penolakan dan/atau instansi tujuan bila ada.
+- POST /api/complaints/:id/tanggapan (admin|kades) `{catatan(≥3)}` → 201 `{ok:true}`; menambah baris log dengan status saat ini + notifikasi tipe "Update" ke pemilik ("Ada tanggapan baru untuk pengaduan <kode>: \"<catatan>\""). Tanggapan boleh diberikan pada status apa pun.
+- POST /api/complaints/:id/pesan (pelapor) `{catatan(≥3,≤500)}` → 201 `{ok:true}`; pelapor menambah informasi/balasan tanpa mengubah status. Log memakai status saat ini dan `oleh` sesuai peran pelapor; notifikasi dikirim ke admin dan perangkat desa di dusun terkait. Hanya pemilik pengaduan yang boleh (403 untuk peran lain), dibatasi 20 pesan / jam / pengguna.
 
 ## Notifikasi [login]
 - GET /api/notifications → `[{id,tipe,judul,isi,dibaca,created_at}]` (terbaru dulu)
@@ -60,7 +61,7 @@ Lingkup data: masyarakat = miliknya; perangkat = dusunnya + yang ia input; admin
 - POST /api/push/unsubscribe `{endpoint}` → `{ok:true}` (hanya menghapus langganan milik pengguna itu)
 - POST /api/push/test → `{terkirim, gagal}`; mengirim notifikasi percobaan ke semua perangkat pengguna. 503 bila push belum diaktifkan
 
-Push dikirim otomatis bersamaan dengan notifikasi di dalam aplikasi (pengaduan diterima, pengaduan baru untuk sekdes, status berubah, tanggapan baru). Langganan yang ditolak layanan push dengan 404/410 dihapus otomatis.
+Push dikirim otomatis bersamaan dengan notifikasi di dalam aplikasi (pengaduan diterima, pengaduan baru untuk sekdes dan perangkat dusun, status berubah, tanggapan baru, pesan dari pelapor). Langganan yang ditolak layanan push dengan 404/410 dihapus otomatis.
 
 ## Laporan [login] (admin|kades)
 - GET /api/reports/summary?dari=YYYY-MM-DD&sampai=YYYY-MM-DD → `{periode:{dari,sampai},total,per_status:[{status,n}],per_kategori:[{kategori,n}],per_dusun:[{dusun,n}],per_instansi:[{instansi,n}],rata_hari_selesai:number|null}`

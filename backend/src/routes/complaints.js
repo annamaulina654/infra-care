@@ -7,7 +7,8 @@ const { KATEGORI, URGENSI, STATUS, TRANSISI, MAKS_FOTO, JABATAN } = require('../
 const { teks, angka, halaman, periksaFoto } = require('../utils/validate');
 const { buatFilter, polaCari } = require('../utils/filter');
 const { batasi, bolehLihat, rapikan } = require('../utils/access');
-const { notifikasiUser, notifikasiRole } = require('../services/notifikasi');
+const limiter = require('../middleware/rateLimit');
+const { notifikasiUser, notifikasiRole, notifikasiPerangkatDusun } = require('../services/notifikasi');
 
 const router = express.Router();
 const PENGELOLA = ['admin', 'kades'];
@@ -84,14 +85,16 @@ router.get('/complaints/:kode', auth(), wrap(async (req, res) => {
   const { foto, ...kolom } = c;
   const out = rapikan({ ...kolom, ada_foto: foto !== null }, req.user);
   out.foto = foto;
-  out.logs = await q('select status, catatan, created_at from complaint_logs where complaint_id=$1 order by created_at, id', [c.id]);
+  out.logs = await q('select status, catatan, oleh, created_at from complaint_logs where complaint_id=$1 order by created_at, id', [c.id]);
   out.next_status = PENGELOLA.includes(req.user.role) ? TRANSISI[c.status] : [];
   res.json(out);
 }));
 
 // ------------------------------------------------------------ buat pengaduan
 
-router.post('/complaints', auth(['masyarakat', 'perangkat']), wrap(async (req, res) => {
+router.post('/complaints', auth(['masyarakat', 'perangkat']),
+  limiter.batasi({ nama: 'complaint', maks: 20, jendelaMs: 60 * 60 * 1000, kunci: (req) => req.user.id }),
+  wrap(async (req, res) => {
   const b = req.body || {};
   const perangkat = req.user.role === 'perangkat';
 
@@ -105,9 +108,13 @@ router.post('/complaints', auth(['masyarakat', 'perangkat']), wrap(async (req, r
   // Perangkat desa melapor atas nama warga yang datang langsung / tidak punya HP.
   const pelaporNama = perangkat ? teks(b.pelapor_nama, 100) : null;
   const anonim = b.anonim === true || b.anonim === 'true';
+  const setujuPrivasi = b.setuju_privasi === true || b.setuju_privasi === 'true';
 
   if (!judul || !deskripsi || !lokasi || !dusun || !KATEGORI.includes(kategori) || !URGENSI.includes(urgensi)) {
     return res.status(400).json({ message: 'Lengkapi judul, kategori, deskripsi, dusun, lokasi, dan urgensi' });
+  }
+  if (!setujuPrivasi) {
+    return res.status(400).json({ message: 'Persetujuan kebijakan privasi wajib dicentang sebelum mengirim laporan' });
   }
   if (perangkat && !pelaporNama) return res.status(400).json({ message: 'Nama warga yang melapor wajib diisi' });
   if (!(await q('select 1 from dusun where nama=$1', [dusun])).length) {
@@ -120,15 +127,18 @@ router.post('/complaints', auth(['masyarakat', 'perangkat']), wrap(async (req, r
   const kode = `ADU-${new Date().getFullYear()}-${String(n).padStart(5, '0')}`;
 
   const [c] = await q(
-    `insert into complaints(kode,judul,kategori,deskripsi,foto,lokasi,dusun,lat,lng,perkiraan,urgensi,anonim,pelapor_nama,user_id)
-     values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning id, kode`,
+    `insert into complaints(kode,judul,kategori,deskripsi,foto,lokasi,dusun,lat,lng,perkiraan,urgensi,anonim,pelapor_nama,setuju_privasi,user_id)
+     values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,true,$14) returning id, kode`,
     [kode, judul, kategori, deskripsi, foto, lokasi, dusun, angka(b.lat, -90, 90), angka(b.lng, -180, 180),
       perkiraan, urgensi, anonim, pelaporNama, req.user.id]);
 
-  await q("insert into complaint_logs(complaint_id,status,catatan) values($1,'Diterima','Pengaduan diterima oleh sistem')", [c.id]);
+  await q("insert into complaint_logs(complaint_id,status,catatan,oleh) values($1,'Diterima','Pengaduan diterima oleh sistem','sistem')", [c.id]);
   await notifikasiUser(req.user.id, 'Pengaduan', 'Pengaduan Diterima', `Pengaduan dengan nomor ${kode} telah diterima oleh sistem.`);
   // Sekretaris desa perlu tahu ada pengaduan baru untuk diverifikasi.
   await notifikasiRole('admin', 'Pengaduan', 'Pengaduan Baru', `Pengaduan baru ${kode}: ${judul} (${dusun}).`);
+  // Kepala dusun terkait juga perlu tahu, kecuali ia sendiri yang menginput laporan.
+  await notifikasiPerangkatDusun(dusun, 'Pengaduan', 'Pengaduan Baru di Dusun Anda',
+    `Pengaduan baru ${kode}: ${judul} (${dusun}).`, perangkat ? req.user.id : null);
 
   res.status(201).json({ id: c.id, kode: c.kode });
 }));
@@ -138,7 +148,7 @@ router.post('/complaints', auth(['masyarakat', 'perangkat']), wrap(async (req, r
 const ambilPengaduan = async (idMentah) => {
   const id = Number(idMentah);
   if (!Number.isInteger(id)) return null;
-  const [c] = await q('select id, kode, status, user_id from complaints where id=$1', [id]);
+  const [c] = await q('select id, kode, status, user_id, dusun from complaints where id=$1', [id]);
   return c || null;
 };
 
@@ -168,8 +178,13 @@ router.patch('/complaints/:id/status', auth(PENGELOLA), wrap(async (req, res) =>
   await q('update complaints set status=$1, instansi=coalesce($2,instansi), updated_at=now() where id=$3',
     [status, instansi || null, lama.id]);
   const catatanLog = catatan || (instansi ? `Diteruskan ke ${instansi}` : `Status diubah oleh ${JABATAN[req.user.role]}`);
-  await q('insert into complaint_logs(complaint_id,status,catatan) values($1,$2,$3)', [lama.id, status, catatanLog]);
-  await notifikasiUser(lama.user_id, 'Update', 'Update Status Pengaduan', `Status pengaduan ${lama.kode} telah berubah menjadi "${status}".`);
+  await q('insert into complaint_logs(complaint_id,status,catatan,oleh) values($1,$2,$3,$4)',
+    [lama.id, status, catatanLog, req.user.role]);
+  // Sertakan alasan/instansi di notifikasi supaya pelapor tidak perlu membuka detail
+  // hanya untuk mengetahui mengapa laporannya ditolak atau diteruskan.
+  const rincian = [instansi ? `Diteruskan ke ${instansi}.` : '', catatan].filter(Boolean).join(' ');
+  await notifikasiUser(lama.user_id, 'Update', 'Update Status Pengaduan',
+    `Status pengaduan ${lama.kode} menjadi "${status}".${rincian ? ` ${rincian}` : ''}`);
   res.json({ id: lama.id, kode: lama.kode, status });
 }));
 
@@ -181,10 +196,35 @@ router.post('/complaints/:id/tanggapan', auth(PENGELOLA), wrap(async (req, res) 
   const c = await ambilPengaduan(req.params.id);
   if (!c) return res.status(404).json({ message: 'Pengaduan tidak ditemukan' });
 
-  await q('insert into complaint_logs(complaint_id,status,catatan) values($1,$2,$3)', [c.id, c.status, catatan]);
+  await q('insert into complaint_logs(complaint_id,status,catatan,oleh) values($1,$2,$3,$4)',
+    [c.id, c.status, catatan, req.user.role]);
   await q('update complaints set updated_at=now() where id=$1', [c.id]);
-  await notifikasiUser(c.user_id, 'Update', 'Tanggapan Baru', `Ada tanggapan baru untuk pengaduan ${c.kode}.`);
+  await notifikasiUser(c.user_id, 'Update', 'Tanggapan Baru',
+    `Ada tanggapan baru untuk pengaduan ${c.kode}: "${catatan}"`);
   res.status(201).json({ ok: true });
 }));
+
+// Warga (atau perangkat yang menginput laporan) dapat menambah informasi/balasan
+// tanpa mengubah status. Pesan masuk ke riwayat dan memberi tahu pemerintah desa.
+router.post('/complaints/:id/pesan', auth(),
+  limiter.batasi({ nama: 'pesan', maks: 20, jendelaMs: 60 * 60 * 1000, kunci: (req) => req.user.id }),
+  wrap(async (req, res) => {
+    const catatan = teks(req.body?.catatan, 500);
+    if (catatan.length < 3) return res.status(400).json({ message: 'Pesan minimal 3 karakter' });
+
+    const c = await ambilPengaduan(req.params.id);
+    if (!c) return res.status(404).json({ message: 'Pengaduan tidak ditemukan' });
+    if (c.user_id !== req.user.id) return res.status(403).json({ message: 'Hanya pelapor yang dapat mengirim pesan' });
+
+    await q('insert into complaint_logs(complaint_id,status,catatan,oleh) values($1,$2,$3,$4)',
+      [c.id, c.status, catatan, req.user.role]);
+    await q('update complaints set updated_at=now() where id=$1', [c.id]);
+
+    const isi = `Pelapor pengaduan ${c.kode} mengirim pesan baru: "${catatan}"`;
+    await notifikasiRole('admin', 'Pesan', 'Pesan dari Pelapor', isi);
+    await notifikasiPerangkatDusun(c.dusun, 'Pesan', 'Pesan dari Pelapor', isi, req.user.id);
+
+    res.status(201).json({ ok: true });
+  }));
 
 module.exports = router;

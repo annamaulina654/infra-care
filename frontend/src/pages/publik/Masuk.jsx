@@ -27,6 +27,7 @@ export default function Masuk() {
   const { dusun, desa } = useDesa();
   const nav = useNavigate();
   const [f, setF] = useState({ nama: '', email: '', password: '', dusun: '' });
+  const [setuju, setSetuju] = useState(false);
   const [lihat, setLihat] = useState(false);
   const [galat, setGalat] = useState('');
   const [proses, setProses] = useState(false);
@@ -40,9 +41,10 @@ export default function Masuk() {
     e.preventDefault();
     setGalat('');
     if (daftarMode && f.password.length < 6) return setGalat('Kata sandi minimal 6 karakter.');
+    if (daftarMode && !setuju) return setGalat('Centang persetujuan kebijakan privasi untuk melanjutkan.');
     setProses(true);
     try {
-      if (daftarMode) await daftar({ nama: f.nama.trim(), email: f.email.trim(), password: f.password, dusun: f.dusun });
+      if (daftarMode) await daftar({ nama: f.nama.trim(), email: f.email.trim(), password: f.password, dusun: f.dusun, setuju_privasi: true });
       else await masuk(f.email.trim(), f.password);
       nav('/app', { replace: true });
     } catch (err) {
@@ -101,6 +103,14 @@ export default function Masuk() {
                     {dusun.map((d) => <option key={d}>{d}</option>)}
                   </select></div>
               </Bidang>
+            )}
+            {daftarMode && (
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-surface2 p-3.5">
+                <input type="checkbox" checked={setuju} onChange={(e) => setSetuju(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[var(--brand)]" />
+                <span className="text-sm leading-relaxed">
+                  Saya menyetujui <Link to="/privasi" target="_blank" rel="noreferrer" className="font-semibold text-brand hover:underline">kebijakan privasi</Link> dan bersedia data saya digunakan untuk memproses pengaduan.
+                </span>
+              </label>
             )}
             <Pesan jenis="galat">{galat}</Pesan>
             <Tombol type="submit" penuh ukuran="lg" memuat={proses}>{daftarMode ? 'Daftar' : 'Masuk'}</Tombol>

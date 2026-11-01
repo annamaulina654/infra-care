@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Tombol from '../../components/ui/Tombol.jsx';
 import Bidang from '../../components/ui/Bidang.jsx';
 import { Kartu, JudulHalaman } from '../../components/ui/Kartu.jsx';
@@ -10,11 +10,12 @@ import { useDesa } from '../../context/DesaContext.jsx';
 import { useJudul } from '../../hooks/useMisc.js';
 import { api } from '../../lib/api.js';
 import { kompresFoto } from '../../lib/image.js';
+import { salinTeks, cetakBukti } from '../../lib/bagikan.js';
 import { KATEGORI, KATEGORI_INFO, URGENSI, URGENSI_GAYA } from '../../lib/constants.js';
-import { IkonFormulir, IkonKirim, IkonKamera, IkonTutup, IkonAman } from '../../lib/icons.js';
-import { cx } from '../../lib/format.js';
+import { IkonFormulir, IkonKirim, IkonKamera, IkonTutup, IkonAman, IkonSalin, IkonCetak } from '../../lib/icons.js';
+import { cx, tgl } from '../../lib/format.js';
 
-const AWAL = { judul: '', kategori: '', deskripsi: '', lokasi: '', dusun: '', perkiraan: '', urgensi: 'Sedang', anonim: false, pelapor_nama: '' };
+const AWAL = { judul: '', kategori: '', deskripsi: '', lokasi: '', dusun: '', perkiraan: '', urgensi: 'Sedang', anonim: false, pelapor_nama: '', setuju_privasi: false };
 
 export default function BuatPengaduan() {
   const { user } = useAuth();
@@ -30,8 +31,14 @@ export default function BuatPengaduan() {
   const [galatFoto, setGalatFoto] = useState('');
   const [proses, setProses] = useState(false);
   const [sukses, setSukses] = useState(null);
+  const [pesanSalin, setPesanSalin] = useState('');
 
   const ubah = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
+
+  const salinKode = async () => {
+    const ok = await salinTeks(sukses.kode);
+    setPesanSalin(ok ? 'Kode pengaduan disalin. Tempel di catatan atau kirim ke keluarga Anda.' : 'Gagal menyalin otomatis. Silakan salin kode secara manual.');
+  };
 
   const pilihFoto = async (e) => {
     const berkas = e.target.files?.[0];
@@ -45,12 +52,13 @@ export default function BuatPengaduan() {
     e.preventDefault();
     setGalat('');
     if (!f.kategori) return setGalat('Pilih kategori kerusakan.');
+    if (!f.setuju_privasi) return setGalat('Centang persetujuan kebijakan privasi sebelum mengirim laporan.');
     setProses(true);
     try {
       const body = {
         judul: f.judul.trim(), kategori: f.kategori, deskripsi: f.deskripsi.trim(), lokasi: f.lokasi.trim(), dusun: f.dusun,
         perkiraan: f.perkiraan.trim() || undefined, urgensi: f.urgensi,
-        lat: titik?.[0], lng: titik?.[1], foto: foto || undefined,
+        lat: titik?.[0], lng: titik?.[1], foto: foto || undefined, setuju_privasi: true,
       };
       if (perangkat) body.pelapor_nama = f.pelapor_nama.trim();
       else body.anonim = f.anonim;
@@ -66,13 +74,20 @@ export default function BuatPengaduan() {
     return (
       <div className="mx-auto max-w-lg py-8 text-center">
         <Kartu className="p-8 sm:p-10">
+          <p className="print-only mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Bukti pengaduan warga</p>
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300"><IkonKirim className="size-8" aria-hidden /></span>
           <h1 className="mt-5 text-2xl font-extrabold">Pengaduan terkirim</h1>
           <p className="mt-2 text-sm text-muted">Simpan kode ini untuk melacak perkembangannya.</p>
           <p className="mt-5 select-all rounded-xl bg-surface2 px-4 py-3 text-2xl font-extrabold tracking-wide text-brand">{sukses.kode}</p>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <p className="mt-2 text-xs text-muted">Dikirim pada {tgl(new Date().toISOString())}</p>
+          {pesanSalin && <Pesan jenis="info" className="mt-4 text-left">{pesanSalin}</Pesan>}
+          <div className="no-print mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Tombol ke={`/app/pengaduan/${sukses.kode}`}>Lihat pengaduan</Tombol>
-            <Tombol varian="garis" onClick={() => { setSukses(null); setF({ ...AWAL, dusun: user.dusun || '' }); setTitik(null); setFoto(null); }}>Buat lagi</Tombol>
+            <Tombol varian="garis" ikon={IkonSalin} onClick={salinKode}>Salin kode</Tombol>
+            <Tombol varian="garis" ikon={IkonCetak} onClick={cetakBukti}>Cetak bukti</Tombol>
+          </div>
+          <div className="no-print mt-3 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Tombol varian="hantu" onClick={() => { setSukses(null); setPesanSalin(''); setF({ ...AWAL, dusun: user.dusun || '' }); setTitik(null); setFoto(null); }}>Buat lagi</Tombol>
           </div>
         </Kartu>
       </div>
@@ -169,6 +184,18 @@ export default function BuatPengaduan() {
                 <span className="mt-0.5 block text-muted">Nama Anda tidak terlihat oleh perangkat desa. Sekretaris desa tetap dapat melihatnya untuk keperluan verifikasi.</span></span>
             </label>
           )}
+
+          <label className="card flex cursor-pointer items-start gap-3 p-4">
+            <input type="checkbox" checked={f.setuju_privasi} onChange={ubah('setuju_privasi')} className="mt-1 size-4 shrink-0 accent-[var(--brand)]" />
+            <span className="text-sm">
+              <span className="flex items-center gap-1.5 font-semibold"><IkonAman className="size-4 text-brand" aria-hidden />Persetujuan privasi</span>
+              <span className="mt-0.5 block text-muted">
+                {perangkat
+                  ? <>Saya sudah menjelaskan <Link to="/privasi" target="_blank" rel="noreferrer" className="font-semibold text-brand hover:underline">kebijakan privasi</Link> kepada warga dan ia menyetujui datanya digunakan untuk memproses laporan ini.</>
+                  : <>Saya menyetujui <Link to="/privasi" target="_blank" rel="noreferrer" className="font-semibold text-brand hover:underline">kebijakan privasi</Link> dan bersedia data saya digunakan untuk memproses laporan ini.</>}
+              </span>
+            </span>
+          </label>
 
           <Pesan jenis="galat">{galat}</Pesan>
           <Tombol type="submit" penuh ukuran="lg" ikon={IkonKirim} memuat={proses}>Kirim Pengaduan</Tombol>

@@ -63,6 +63,7 @@ Uji ini mengubah data (membuat pengaduan dan pengguna). Jalankan `npm run seed` 
 1. Buat database PostgreSQL cloud (Neon atau Supabase) dan salin connection string-nya.
 2. Di Vercel, impor repositori ini. Tambahkan environment variable `DATABASE_URL` dan `JWT_SECRET` (teks acak minimal 32 karakter; wajib di production, server menolak start tanpa itu).
 3. Jalankan seed sekali dari laptop ke database cloud: `DATABASE_URL="..." npm run seed` di folder `backend`.
+4. Database yang sudah berisi data tidak perlu di-seed ulang: jalankan `backend/migrasi-sprint1.sql` di SQL Editor (menambah persetujuan privasi, penanda pengirim riwayat, dan pendukung pesan pelapor).
 
 ## Notifikasi push (opsional)
 
@@ -92,7 +93,7 @@ Hapus atau ganti kata sandi akun contoh sebelum dipakai sungguhan.
 
 | Peran | Dapat melakukan |
 |---|---|
-| Warga | Membuat pengaduan (foto dan titik peta opsional; bisa dikirim anonim), melihat pengaduannya sendiri, menerima notifikasi |
+| Warga | Membuat pengaduan (foto dan titik peta opsional; bisa dikirim anonim), menambah informasi/balasan pada laporannya, menyalin/membagikan kode dan mencetak bukti, menerima notifikasi |
 | Perangkat desa | Melapor atas nama warga yang datang langsung, melihat pengaduan di dusunnya, melihat peta |
 | Sekretaris desa (admin) | Semua pengaduan, mengubah status, memberi tanggapan, laporan dan ekspor CSV, kelola pengguna, pengaturan desa |
 | Kepala desa | Semua pengaduan, mengubah status, memberi tanggapan, laporan dan ekspor CSV |

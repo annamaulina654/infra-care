@@ -9,6 +9,7 @@ import Beranda from './pages/publik/Beranda.jsx';
 import Masuk from './pages/publik/Masuk.jsx';
 import Lacak from './pages/publik/Lacak.jsx';
 import Transparansi from './pages/publik/Transparansi.jsx';
+import Privasi from './pages/publik/Privasi.jsx';
 import Dashboard from './pages/app/Dashboard.jsx';
 import BuatPengaduan from './pages/app/BuatPengaduan.jsx';
 import DaftarPengaduanApp from './pages/app/DaftarPengaduanApp.jsx';
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="pengaduan" element={<Transparansi />} />
         <Route path="lacak" element={<Lacak />} />
         <Route path="lacak/:kode" element={<Lacak />} />
+        <Route path="privasi" element={<Privasi />} />
       </Route>
       <Route path="login" element={<Masuk />} />
 

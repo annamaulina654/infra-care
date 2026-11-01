@@ -19,6 +19,7 @@ erDiagram
         text role "masyarakat | perangkat | admin | kades"
         text dusun "nama dusun, boleh kosong"
         boolean aktif
+        boolean setuju_privasi "bukti persetujuan saat mendaftar"
         text foto "data URL, opsional"
         timestamptz created_at
     }
@@ -46,6 +47,7 @@ erDiagram
         text urgensi "Tinggi | Sedang | Rendah"
         text status
         boolean anonim
+        boolean setuju_privasi "bukti persetujuan saat mengirim"
         text pelapor_nama "bila perangkat melapor atas nama warga"
         text instansi "bila diteruskan"
         int user_id FK
@@ -57,6 +59,7 @@ erDiagram
         int complaint_id FK
         text status
         text catatan
+        text oleh "sistem | masyarakat | perangkat | admin | kades"
         timestamptz created_at
     }
     NOTIFICATIONS {
@@ -82,6 +85,7 @@ erDiagram
 
 - **Dusun dan pengguna/pengaduan** dihubungkan lewat nama (teks), bukan kunci asing. Ini sengaja disederhanakan; API memastikan nama dusun yang dipilih ada di tabel `dusun`, dan dusun yang sudah dipakai tidak dapat dihapus (HTTP 409). Jika ingin lebih ketat, ubah menjadi `dusun_id` dengan kunci asing.
 - **settings** adalah tabel kunci-nilai tanpa relasi (nama desa, alamat, jam layanan, telepon).
-- **complaint_logs** mencatat setiap perubahan status dan setiap tanggapan. Halaman pelacakan publik menampilkan tabel ini tanpa data pribadi.
+- **complaint_logs** mencatat setiap perubahan status, tanggapan petugas, dan pesan tambahan dari pelapor. Kolom `oleh` menyimpan pengirimnya (`sistem`, `masyarakat`, `perangkat`, `admin`, `kades`); baris lama sebelum migrasi Sprint 1 bernilai `null`. Halaman pelacakan publik menampilkan tabel ini tanpa data pribadi.
+- **Persetujuan privasi** dicatat dua kali: `users.setuju_privasi` saat pendaftaran dan `complaints.setuju_privasi` saat pengaduan dikirim. Nilainya wajib `true` agar permintaan diterima; halaman `/privasi` menjelaskan penggunaannya.
 - Status yang diizinkan: Diterima, Diverifikasi, Masuk Perencanaan, Dalam Perbaikan, Selesai, Diteruskan ke Instansi, Ditolak. Perpindahan antarstatus dibatasi (tabel `TRANSISI` di `backend/src/config.js`).
 - Kode pengaduan dibuat dari sequence `complaint_seq`, jadi tidak ada dua pengaduan dengan kode yang sama walau dikirim bersamaan.
