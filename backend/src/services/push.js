@@ -36,7 +36,7 @@ async function kirimKeUser(userIds, { judul, isi, url, tag }) {
   let terkirim = 0; let gagal = 0;
   await Promise.all(langganan.map(async (l) => {
     try {
-      await wp.sendNotification({ endpoint: l.endpoint, keys: { p256dh: l.p256dh, auth: l.auth } }, muatan, { TTL: 86400, timeout: 4000 });
+      await wp.sendNotification({ endpoint: l.endpoint, keys: { p256dh: l.p256dh, auth: l.auth } }, muatan, { TTL: 86400, urgency: 'high', timeout: 4000 });
       terkirim++;
     } catch (e) {
       gagal++;

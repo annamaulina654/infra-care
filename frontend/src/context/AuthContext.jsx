@@ -4,7 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ambilToken, simpanToken, aturSaatSesiBerakhir } from '../lib/api.js';
-import { nonaktifkanPush } from '../lib/push.js';
+import { lepasDariAkun } from '../lib/push.js';
 
 const AuthContext = createContext(null);
 
@@ -43,7 +43,7 @@ export function AuthProvider({ children }) {
     mulaiSesi(await api('/auth/register', { method: 'POST', body: data, tanpaToken: true })), [mulaiSesi]);
 
   const keluar = useCallback(async () => {
-    try { await Promise.race([nonaktifkanPush(), new Promise((r) => setTimeout(r, 1500))]); } catch { /* abaikan */ }
+    try { await Promise.race([lepasDariAkun(), new Promise((r) => setTimeout(r, 1500))]); } catch { /* abaikan */ }
     simpanToken(null);
     setUser(null);
     navigate('/');

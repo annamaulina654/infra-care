@@ -18,6 +18,11 @@ export const kunciKeBiner = (b64) => {
   return Uint8Array.from(mentah, (c) => c.charCodeAt(0));
 };
 
+// Penanda "pengguna sengaja mematikan notifikasi di perangkat ini", supaya tidak diaktifkan lagi otomatis.
+const KUNCI_MATI = 'push-dimatikan';
+export const sengajaMati = () => { try { return localStorage.getItem(KUNCI_MATI) === '1'; } catch { return false; } };
+const setMati = (v) => { try { v ? localStorage.setItem(KUNCI_MATI, '1') : localStorage.removeItem(KUNCI_MATI); } catch { /* abaikan */ } };
+
 const daftarkan = async () => {
   await navigator.serviceWorker.register('/sw.js');
   return navigator.serviceWorker.ready;
@@ -36,15 +41,39 @@ export async function aktifkanPush(kunci) {
   const reg = await daftarkan();
   let sub = await reg.pushManager.getSubscription();
   if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: kunciKeBiner(kunci) });
-  const json = sub.toJSON();
-  await api('/push/subscribe', { method: 'POST', body: { endpoint: json.endpoint, keys: json.keys } });
+  await kirimLangganan(sub);
+  setMati(false);
   return sub;
 }
 
-// Lepas langganan di server lalu di browser. `tanpaServer` untuk kasus token sudah tidak berlaku.
+const kirimLangganan = (sub) => {
+  const json = sub.toJSON();
+  return api('/push/subscribe', { method: 'POST', body: { endpoint: json.endpoint, keys: json.keys } });
+};
+
+// Dipanggil saat aplikasi dibuka setelah login: bila izin sudah diberikan dan perangkat masih punya langganan,
+// daftarkan ke akun yang sedang login tanpa meminta apa pun lagi. Mengembalikan true bila aktif.
+export async function pulihkanPush() {
+  if (!didukung() || Notification.permission !== 'granted' || sengajaMati()) return false;
+  const sub = await langgananSaatIni();
+  if (!sub) return false;
+  await kirimLangganan(sub);
+  return true;
+}
+
+// Matikan sengaja (tombol Matikan): lepas di server dan di browser.
 export async function nonaktifkanPush() {
+  setMati(true);
   const sub = await langgananSaatIni();
   if (!sub) return;
   await api('/push/unsubscribe', { method: 'POST', body: { endpoint: sub.endpoint } }).catch(() => {});
   await sub.unsubscribe().catch(() => {});
+}
+
+// Saat keluar akun: putuskan perangkat dari akun ini di server (supaya akun berikutnya tidak menerima
+// notifikasi orang lain), tetapi biarkan langganan di browser. Login berikutnya memulihkannya otomatis.
+export async function lepasDariAkun() {
+  const sub = await langgananSaatIni();
+  if (!sub) return;
+  await api('/push/unsubscribe', { method: 'POST', body: { endpoint: sub.endpoint } }).catch(() => {});
 }

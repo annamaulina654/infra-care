@@ -22,7 +22,9 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(d.judul || 'Lapor Pak Klebun', {
     body: d.isi || '',
     icon: '/icon-192.png',
-    badge: '/favicon-32.png',
+    badge: '/badge-96.png',
+    vibrate: [200, 100, 200],
+    renotify: Boolean(d.tag),
     tag: d.tag || undefined,
     data: { url: alamatAman(d.url) },
   }));

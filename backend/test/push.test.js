@@ -50,6 +50,7 @@ describe('layanan push', () => {
     assert.deepEqual(terkirim.map((t) => t.endpoint).sort(), ['https://p.test/w1/a', 'https://p.test/w1/b']);
     assert.deepEqual(terkirim[0].muatan, { judul: 'Halo', isi: 'Ada ADU-2026-00003', url: '/app/pengaduan/ADU-2026-00003' });
     assert.equal(terkirim[0].opsi.TTL, 86400);
+    assert.equal(terkirim[0].opsi.urgency, 'high');
   });
 
   it('langganan mati (410) dihapus; galat lain (500) dipertahankan; yang sehat tetap terkirim', async () => {

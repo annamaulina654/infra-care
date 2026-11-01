@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
-import { didukung, mandiri, perangkatApple, langgananSaatIni, aktifkanPush, nonaktifkanPush } from '../lib/push.js';
+import { didukung, mandiri, perangkatApple, langgananSaatIni, aktifkanPush, nonaktifkanPush, pulihkanPush } from '../lib/push.js';
 
 // Status notifikasi push untuk perangkat ini.
 //   serverAktif : server sudah diberi kunci VAPID (null = belum diketahui)
@@ -15,7 +15,11 @@ export function usePush() {
     let server = { aktif: false, key: null };
     try { server = await api('/push/key'); } catch { /* anggap mati */ }
     let aktif = false;
-    try { aktif = Boolean(await langgananSaatIni()); } catch { /* abaikan */ }
+    try {
+      // Izin sudah ada dan perangkat masih berlangganan: sambungkan ke akun yang sedang login.
+      aktif = server.aktif && await pulihkanPush();
+      if (!aktif) aktif = Boolean(await langgananSaatIni());
+    } catch { /* abaikan */ }
     setState({
       siap: true, serverAktif: server.aktif, kunci: server.key, aktif,
       izin: typeof Notification !== 'undefined' ? Notification.permission : 'denied',
