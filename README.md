@@ -40,17 +40,6 @@ Prasyarat: Node.js 18+ dan PostgreSQL.
 
 Gunakan `npm install`, bukan `npm ci`: berkas `package-lock.json` sengaja tidak disertakan dan akan dibuat otomatis pada `npm install` pertama. Setelah itu commit lock file tersebut.
 
-### Akun contoh (kata sandi semua akun: `password123`)
-
-| Peran | Email |
-|---|---|
-| Warga (Dusun Sumber Gundang) | warga@desa.id |
-| Perangkat desa / kepala dusun (Dusun Langgali) | perangkat@desa.id |
-| Sekretaris desa (admin) | sekdes@desa.id |
-| Kepala desa | kades@desa.id |
-
-Hapus atau ganti kata sandi akun contoh sebelum dipakai sungguhan.
-
 ### Pengujian backend
 
 Jalankan server dengan database yang baru di-seed, lalu di terminal lain:
@@ -87,6 +76,17 @@ Agar notifikasi muncul di layar HP/komputer walau aplikasi tertutup:
 Push butuh HTTPS (Vercel sudah) dan izin dari pengguna. Di iPhone/iPad (iOS 16.4+), situs harus dipasang dulu lewat Bagikan → Tambah ke Layar Utama. Tanpa kunci VAPID, fitur ini mati dan sisanya tetap berjalan. Uji pengiriman: `npm run test:push` di folder `backend`.
 
 Foto pengaduan disimpan sebagai data URL di database (dikompres di browser hingga sisi terpanjang 1280 px), karena penyimpanan berkas di Vercel tidak permanen. Untuk volume besar, pindahkan ke object storage.
+
+### Akun contoh (kata sandi semua akun: `password123`)
+
+| Peran | Email |
+|---|---|
+| Warga (Dusun Sumber Gundang) | warga@desa.id |
+| Perangkat desa / kepala dusun (Dusun Langgali) | perangkat@desa.id |
+| Sekretaris desa (admin) | sekdes@desa.id |
+| Kepala desa | kades@desa.id |
+
+Hapus atau ganti kata sandi akun contoh sebelum dipakai sungguhan.
 
 ## Peran dan hak akses
 
