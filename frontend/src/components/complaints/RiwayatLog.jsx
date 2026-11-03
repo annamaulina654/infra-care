@@ -26,6 +26,7 @@ export default function RiwayatLog({ logs = [] }) {
             <time className="text-xs text-muted">{tgl(l.created_at)}</time>
           </div>
           {l.catatan && <p className="mt-1.5 whitespace-pre-line text-sm">{l.catatan}</p>}
+          {l.foto && <img src={l.foto} alt="Bukti foto" className="mt-2 max-h-64 w-full rounded-xl object-cover border border-line" />}
         </li>
       ))}
     </ol>

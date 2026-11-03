@@ -70,6 +70,7 @@ create table complaint_logs(
   complaint_id int references complaints(id) on delete cascade,
   status text,
   catatan text,
+  foto text,                       -- bukti foto perubahan status (mis. tahap Dalam Perbaikan)
   oleh text,                       -- sistem, warga, perangkat, admin, kades
   created_at timestamptz default now()
 );

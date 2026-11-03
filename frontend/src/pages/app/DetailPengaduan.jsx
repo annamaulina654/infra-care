@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import Tombol from '../../components/ui/Tombol.jsx';
 import Bidang from '../../components/ui/Bidang.jsx';
@@ -13,9 +13,10 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { useJudul } from '../../hooks/useMisc.js';
 import { api } from '../../lib/api.js';
+import { kompresFoto } from '../../lib/image.js';
 import { KATEGORI_INFO, PENGELOLA, STATUS_GAYA } from '../../lib/constants.js';
 import { bagikanPengaduan, salinTeks, cetakBukti } from '../../lib/bagikan.js';
-import { IkonKiri, IkonLokasi, IkonUser, IkonPesan, IkonUbah, IkonKirim, IkonPeta, IkonSalin, IkonBagikan, IkonCetak } from '../../lib/icons.js';
+import { IkonKiri, IkonLokasi, IkonUser, IkonPesan, IkonUbah, IkonKirim, IkonPeta, IkonSalin, IkonBagikan, IkonCetak, IkonKamera, IkonTutup } from '../../lib/icons.js';
 import { tgl } from '../../lib/format.js';
 
 const INSTANSI = ['PLN', 'Dinas PU / Bina Marga', 'Dinas Pendidikan', 'Dinas Kesehatan', 'PDAM', 'Kecamatan'];
@@ -32,6 +33,9 @@ export default function DetailPengaduan() {
   const [baru, setBaru] = useState('');
   const [catatan, setCatatan] = useState('');
   const [instansi, setInstansi] = useState('');
+  const [fotoBukti, setFotoBukti] = useState(null);
+  const [galatFotoBukti, setGalatFotoBukti] = useState('');
+  const berkasBuktiRef = useRef(null);
   const [tanggapan, setTanggapan] = useState('');
   const [pesan, setPesan] = useState('');
   const [galat, setGalat] = useState('');
@@ -39,7 +43,7 @@ export default function DetailPengaduan() {
   const [info, setInfo] = useState(lokasiHalaman.state?.info || '');
   const [proses, setProses] = useState(false);
 
-  const bukaStatus = () => { setBaru(c.next_status[0] || ''); setCatatan(''); setInstansi(''); setGalat(''); setDlgStatus(true); };
+  const bukaStatus = () => { setBaru(c.next_status[0] || ''); setCatatan(''); setInstansi(''); setFotoBukti(null); setGalatFotoBukti(''); setGalat(''); setDlgStatus(true); };
 
   const salinKode = async () => {
     const ok = await salinTeks(c.kode);
@@ -52,12 +56,21 @@ export default function DetailPengaduan() {
     else if (hasil === 'gagal') setInfo('Tautan gagal dibagikan. Gunakan tombol "Salin kode" sebagai gantinya.');
   };
 
+  const pilihFotoBukti = async (e) => {
+    const berkas = e.target.files?.[0];
+    e.target.value = '';
+    if (!berkas) return;
+    setGalatFotoBukti('');
+    try { setFotoBukti(await kompresFoto(berkas)); } catch (err) { setGalatFotoBukti(err.message); }
+  };
+
   const simpanStatus = async (e) => {
     e.preventDefault();
     setGalat('');
+    setGalatFotoBukti('');
     setProses(true);
     try {
-      await api(`/complaints/${c.id}/status`, { method: 'PATCH', body: { status: baru, catatan: catatan.trim() || undefined, instansi: baru === 'Diteruskan ke Instansi' ? instansi.trim() : undefined } });
+      await api(`/complaints/${c.id}/status`, { method: 'PATCH', body: { status: baru, catatan: catatan.trim() || undefined, instansi: baru === 'Diteruskan ke Instansi' ? instansi.trim() : undefined, foto: baru === 'Dalam Perbaikan' ? fotoBukti : undefined } });
       setDlgStatus(false);
       setInfo(`Status diubah menjadi "${baru}".`);
       reload();
@@ -206,9 +219,24 @@ export default function DetailPengaduan() {
               <datalist id="daftar-instansi">{INSTANSI.map((i) => <option key={i} value={i} />)}</datalist>
             </Bidang>
           )}
-          <Bidang label={baru === 'Ditolak' ? 'Alasan penolakan' : 'Catatan untuk pelapor (opsional)'} id="catatan" wajib={baru === 'Ditolak'}>
-            <textarea id="catatan" rows={3} required={baru === 'Ditolak'} minLength={baru === 'Ditolak' ? 3 : undefined} value={catatan} onChange={(e) => setCatatan(e.target.value)} className="field resize-y" />
-          </Bidang>
+          {baru === 'Dalam Perbaikan' ? (
+            <>
+              <Bidang label="Catatan untuk pelapor (wajib)" id="catatan" wajib>
+                <textarea id="catatan" rows={3} required minLength={3} value={catatan} onChange={(e) => setCatatan(e.target.value)} className="field resize-y" />
+              </Bidang>
+              <Bidang label="Bukti foto (wajib)" id="foto-bukti" wajib petunjuk="JPG atau PNG. Foto akan dikompresi otomatis sebelum dikirim.">
+                {fotoBukti
+                  ? <div className="relative"><img src={fotoBukti} alt="Pratinjau bukti foto" className="max-h-64 w-full rounded-xl object-cover" /><button type="button" onClick={() => setFotoBukti(null)} aria-label="Hapus foto" className="absolute right-2 top-2 grid size-9 place-items-center rounded-full bg-slate-900/70 text-white"><IkonTutup aria-hidden /></button></div>
+                  : <button type="button" onClick={() => berkasBuktiRef.current?.click()} className="flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line text-sm font-semibold text-muted hover:bg-surface2"><IkonKamera className="size-6" aria-hidden />Ambil atau pilih foto bukti</button>}
+                <input ref={berkasBuktiRef} type="file" accept="image/jpeg,image/png" onChange={pilihFotoBukti} className="sr-only" aria-label="Pilih foto bukti" />
+                {galatFotoBukti && <p role="alert" className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">{galatFotoBukti}</p>}
+              </Bidang>
+            </>
+          ) : (
+            <Bidang label={baru === 'Ditolak' ? 'Alasan penolakan' : 'Catatan untuk pelapor (opsional)'} id="catatan" wajib={baru === 'Ditolak'}>
+              <textarea id="catatan" rows={3} required={baru === 'Ditolak'} minLength={baru === 'Ditolak' ? 3 : undefined} value={catatan} onChange={(e) => setCatatan(e.target.value)} className="field resize-y" />
+            </Bidang>
+          )}
           <Pesan jenis="galat">{galat}</Pesan>
           <div className="flex justify-end gap-2">
             <Tombol varian="garis" onClick={() => setDlgStatus(false)}>Batal</Tombol>

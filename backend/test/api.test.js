@@ -265,8 +265,8 @@ describe('API pengaduan desa', () => {
       assert.equal(r.data.status, 'Diteruskan ke Instansi');
       assert.equal(r.data.instansi, 'PLN');
       assert.equal(r.data.logs.length, 3);
-      assert.deepEqual(Object.keys(r.data.logs[0]).sort(), ['catatan', 'created_at', 'oleh', 'status']);
-      for (const kata of ['Siti', 'pelapor', 'user_id', 'foto', 'lokasi', 'deskripsi', '"id"']) assert.ok(!r.teks.includes(kata), `bocor: ${kata}`);
+      assert.deepEqual(Object.keys(r.data.logs[0]).sort(), ['catatan', 'created_at', 'foto', 'oleh', 'status']);
+      for (const kata of ['Siti', 'pelapor', 'user_id', 'lokasi', 'deskripsi', '"id"']) assert.ok(!r.teks.includes(kata), `bocor: ${kata}`);
       assert.equal((await get('/public/complaints/NOPE')).status, 404);
     });
   });
