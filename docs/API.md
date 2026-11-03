@@ -41,9 +41,10 @@ Lingkup data: masyarakat = miliknya; perangkat = dusunnya + yang ia input; admin
   `pelapor`: nama (atau `pelapor_nama` bila diinput perangkat); bila `anonim`: admin & pemilik melihat `"<nama> (anonim)"`, lainnya `"Anonim"`.
   `q` mencari di judul, kode, kategori, dusun (ilike).
 - GET /api/complaints/map → `[{kode,judul,kategori,status,urgensi,dusun,lat,lng}]` hanya yang punya koordinat, sesuai lingkup, maks 1000. (Rute ini harus didaftarkan SEBELUM `/:kode`.)
-- GET /api/complaints/:kode → item lengkap + `foto` (data URL atau null) + `logs:[{status,catatan,oleh,created_at}]` + `next_status:[...]` (hanya untuk admin/kades; array kosong untuk peran lain / status final). 403 di luar lingkup, 404 tidak ada. `oleh` menandai pengirim log: `sistem`, `masyarakat`, `perangkat`, `admin`, atau `kades` (baris lama bisa `null`).
+- GET /api/complaints/:kode → item lengkap + `foto` (data URL atau null) + `logs:[{status,catatan,oleh,created_at}]` + `next_status:[...]` (hanya untuk admin/kades; array kosong untuk peran lain / status final) + `ttd:{kades:{nama,gambar},sekdes:{nama,gambar}}` untuk blok tanda tangan bukti. Admin dan pemilik juga menerima `pelapor_nama` dan `pembuat_role` untuk mengisi form edit. 403 di luar lingkup, 404 tidak ada. `oleh` menandai pengirim log: `sistem`, `masyarakat`, `perangkat`, `admin`, atau `kades` (baris lama bisa `null`).
 - POST /api/complaints (masyarakat|perangkat) `{judul(≤120),kategori,deskripsi(≤500),lokasi(≤300),dusun,lat?,lng?,perkiraan?,urgensi,anonim?,foto?(data URL jpeg/png ≤ ~2MB),pelapor_nama?(wajib bila perangkat),setuju_privasi:true}` → 201 `{id,kode}`
   Foto OPSIONAL. Dusun harus ada di tabel dusun. Notifikasi ke pembuat, semua admin, dan perangkat desa di dusun terkait. Dibatasi 20 pembuatan / jam / pengguna (429 + `Retry-After`). Persetujuan privasi wajib.
+- PATCH /api/complaints/:id (admin atau pemilik) `{judul,kategori,deskripsi,lokasi,dusun,urgensi,lat?,lng?,perkiraan?,anonim?,pelapor_nama?,foto?}` → `{id,kode}`. Seluruh isian divalidasi seperti saat membuat. `foto:null` menghapus foto, sedangkan foto tidak dikirim berarti tetap. Status tidak berubah (gunakan endpoint status). Setiap edit menambah log `Data pengaduan diubah`; bila admin mengedit laporan orang lain, pemilik mendapat notifikasi.
 - PATCH /api/complaints/:id/status (admin|kades) `{status,catatan?,instansi?}` → `{id,kode,status}`; aturan TRANSISI di atas; log + notifikasi ke pemilik. Notifikasi memuat alasan penolakan dan/atau instansi tujuan bila ada.
 - POST /api/complaints/:id/tanggapan (admin|kades) `{catatan(≥3)}` → 201 `{ok:true}`; menambah baris log dengan status saat ini + notifikasi tipe "Update" ke pemilik ("Ada tanggapan baru untuk pengaduan <kode>: \"<catatan>\""). Tanggapan boleh diberikan pada status apa pun.
 - POST /api/complaints/:id/pesan (pelapor) `{catatan(≥3,≤500)}` → 201 `{ok:true}`; pelapor menambah informasi/balasan tanpa mengubah status. Log memakai status saat ini dan `oleh` sesuai peran pelapor; notifikasi dikirim ke admin dan perangkat desa di dusun terkait. Hanya pemilik pengaduan yang boleh (403 untuk peran lain), dibatasi 20 pesan / jam / pengguna.
@@ -75,8 +76,9 @@ Push dikirim otomatis bersamaan dengan notifikasi di dalam aplikasi (pengaduan d
 - DELETE /api/users/:id → `{ok:true}`; 400 menghapus diri sendiri; 409 bila punya pengaduan.
 
 ## Pengaturan desa [login] (admin)
-- GET /api/settings → `{nama_desa,alamat,jam,telepon,dusun:[{id,nama,jumlah_pengaduan}]}`
-- PATCH /api/settings `{nama_desa?,alamat?,jam?,telepon?}` → seperti GET (nama_desa tidak boleh kosong)
+- GET /api/settings → `{nama_desa,alamat,jam,telepon,nama_kades,nama_sekdes,ttd_kades,ttd_sekdes,dusun:[{id,nama,jumlah_pengaduan}]}`
+- PATCH /api/settings `{nama_desa?,alamat?,jam?,telepon?,nama_kades?,nama_sekdes?,ttd_kades?,ttd_sekdes?}` → seperti GET (nama_desa tidak boleh kosong)
+  `ttd_kades`/`ttd_sekdes` berupa data URL PNG (maks ~1,5 MB); string kosong atau `null` menghapus tanda tangan. Nama dan tanda tangan ini dipakai di bagian bawah bukti pengaduan yang dicetak.
 - POST /api/dusun `{nama}` → 201 `{id,nama}`; 400 kosong/duplikat
 - DELETE /api/dusun/:id → `{ok:true}`; 409 bila dipakai pengaduan atau pengguna
 

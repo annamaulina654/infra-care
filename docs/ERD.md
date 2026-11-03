@@ -29,7 +29,7 @@ erDiagram
         timestamptz created_at
     }
     SETTINGS {
-        text key PK "nama_desa, alamat, jam, telepon"
+        text key PK "nama_desa, alamat, jam, telepon, nama_kades, nama_sekdes, ttd_kades, ttd_sekdes"
         text value
     }
     COMPLAINTS {

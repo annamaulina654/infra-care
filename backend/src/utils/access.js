@@ -32,4 +32,4 @@ const rapikan = (c, user) => {
   return { ...aman, pelapor: namaPelapor(c, user) };
 };
 
-module.exports = { batasi, bolehLihat, rapikan };
+module.exports = { batasi, bolehLihat, rapikan, adminAtauPemilik };

@@ -14,6 +14,10 @@ const PENGATURAN = {
   alamat: 'Kantor Desa Banyoneng Laok, Kecamatan Contoh, Kabupaten Contoh',
   jam: 'Senin–Jumat, 08.00–15.00',
   telepon: '',
+  nama_kades: 'Kepala Desa (Klebun)',
+  nama_sekdes: 'Budi Santoso',
+  ttd_kades: '',
+  ttd_sekdes: '',
 };
 const DUSUN = [
   'Dusun Sumber Gundang',

@@ -14,6 +14,7 @@ import Dashboard from './pages/app/Dashboard.jsx';
 import BuatPengaduan from './pages/app/BuatPengaduan.jsx';
 import DaftarPengaduanApp from './pages/app/DaftarPengaduanApp.jsx';
 import DetailPengaduan from './pages/app/DetailPengaduan.jsx';
+import EditPengaduan from './pages/app/EditPengaduan.jsx';
 import PetaHalaman from './pages/app/PetaHalaman.jsx';
 import Notifikasi from './pages/app/Notifikasi.jsx';
 import Profil from './pages/app/Profil.jsx';
@@ -49,6 +50,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="pengaduan" element={<DaftarPengaduanApp />} />
           <Route path="pengaduan/:kode" element={<DetailPengaduan />} />
+          <Route path="pengaduan/:kode/edit" element={<EditPengaduan />} />
           <Route path="notifikasi" element={<Notifikasi />} />
           <Route path="profil" element={<Profil />} />
           <Route element={<Pelindung peran={['masyarakat', 'perangkat']} />}>

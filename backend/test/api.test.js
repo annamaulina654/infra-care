@@ -633,6 +633,106 @@ describe('API pengaduan desa', () => {
     });
   });
 
+  // ================================================================== edit pengaduan
+  describe('edit pengaduan (admin atau pemilik)', () => {
+    const isi = (over = {}) => ({
+      judul: 'Jalan desa berlubang di depan balai dusun',
+      kategori: 'Jalan',
+      deskripsi: 'Kondisi ini mengganggu aktivitas warga dan perlu segera ditindaklanjuti.',
+      lokasi: 'Jalan utama Dusun Sumber Gundang, depan balai dusun',
+      dusun: 'Dusun Sumber Gundang',
+      perkiraan: '± 30 meter, perlu pengaspalan',
+      urgensi: 'Tinggi',
+      ...over,
+    });
+
+    it('izin: tanpa login 401; bukan pemilik / kades 403; id salah 404', async () => {
+      assert.equal((await patch('/complaints/1', isi(), null)).status, 401);
+      for (const t of [T.warga2, T.perangkat, T.kades]) {
+        assert.equal((await patch('/complaints/1', isi(), t)).status, 403);
+      }
+      assert.equal((await patch('/complaints/abc', isi(), T.admin)).status, 404);
+      assert.equal((await patch('/complaints/9999', isi(), T.admin)).status, 404);
+    });
+
+    it('pemilik dapat mengubah seluruh isian, foto, dan koordinat; log tercatat', async () => {
+      const sebelum = (await get(`/complaints/${kode(1)}`, T.warga)).data;
+      const r = await patch('/complaints/1', isi({
+        judul: 'Jalan desa berlubang (diperbarui)',
+        deskripsi: 'Uraian baru dari pemilik.',
+        lokasi: 'Depan balai dusun, RT 01',
+        perkiraan: '5 truk batu',
+        urgensi: 'Sedang',
+        anonim: false,
+        lat: -7.0293,
+        lng: 112.7462,
+        foto: PNG,
+      }), T.warga);
+      assert.equal(r.status, 200);
+      assert.deepEqual(r.data, { id: 1, kode: kode(1) });
+      const d = (await get(`/complaints/${kode(1)}`, T.warga)).data;
+      assert.equal(d.judul, 'Jalan desa berlubang (diperbarui)');
+      assert.equal(d.deskripsi, 'Uraian baru dari pemilik.');
+      assert.equal(d.lokasi, 'Depan balai dusun, RT 01');
+      assert.equal(d.perkiraan, '5 truk batu');
+      assert.equal(d.urgensi, 'Sedang');
+      assert.equal(d.lat, -7.0293);
+      assert.equal(d.lng, 112.7462);
+      assert.equal(d.foto, PNG);
+      assert.equal(d.ada_foto, true);
+      assert.equal(d.status, sebelum.status, 'status tidak ikut berubah');
+      assert.equal(d.logs.at(-1).catatan, 'Data pengaduan diubah');
+      assert.equal(d.logs.at(-1).oleh, 'masyarakat');
+      assert.equal(d.pelapor_nama, '');
+      assert.equal(d.pembuat_role, 'masyarakat');
+      assert.deepEqual(Object.keys(d.ttd).sort(), ['kades', 'sekdes']);
+    });
+
+    it('foto:null menghapus foto; foto yang tidak dikirim tetap', async () => {
+      assert.equal((await patch('/complaints/1', isi({ judul: 'Tanpa foto' }), T.warga)).status, 200);
+      let d = (await get(`/complaints/${kode(1)}`, T.warga)).data;
+      assert.equal(d.foto, PNG, 'foto lama tetap bila tidak dikirim');
+      assert.equal((await patch('/complaints/1', isi({ judul: 'Tanpa foto', foto: null }), T.warga)).status, 200);
+      d = (await get(`/complaints/${kode(1)}`, T.warga)).data;
+      assert.equal(d.foto, null);
+      assert.equal(d.ada_foto, false);
+    });
+
+    it('admin dapat mengedit laporan warga lain dan pemilik diberi notifikasi', async () => {
+      const r = await patch('/complaints/2', isi({
+        dusun: 'Dusun Langgali',
+        judul: 'Lampu penerangan jalan mati (dicek admin)',
+        deskripsi: 'Sudah dicek, menunggu penggantian.',
+      }), T.admin);
+      assert.equal(r.status, 200);
+      const d = (await get(`/complaints/${kode(2)}`, T.warga)).data;
+      assert.equal(d.judul, 'Lampu penerangan jalan mati (dicek admin)');
+      assert.equal(d.logs.at(-1).oleh, 'admin');
+      assert.equal(d.logs.at(-1).catatan, 'Data pengaduan diubah');
+      const n = (await get('/notifications', T.warga)).data;
+      assert.ok(n.some((x) => x.isi.includes(kode(2)) && x.isi.includes('Sekretaris Desa')));
+    });
+
+    it('laporan perangkat tetap wajib nama warga; pemilik perangkat dapat mengubahnya', async () => {
+      const tanpaNama = await patch('/complaints/3', isi({ dusun: 'Dusun Langger', pelapor_nama: '' }), T.perangkat);
+      assert.equal(tanpaNama.status, 400);
+      assert.match(tanpaNama.data.message, /Nama warga/);
+      const r = await patch('/complaints/3', isi({ dusun: 'Dusun Langger', pelapor_nama: 'Bu Marlina (baru)' }), T.perangkat);
+      assert.equal(r.status, 200);
+      const d = (await get(`/complaints/${kode(3)}`, T.perangkat)).data;
+      assert.equal(d.pelapor, 'Bu Marlina (baru)');
+      assert.equal(d.pelapor_nama, 'Bu Marlina (baru)');
+      assert.equal(d.pembuat_role, 'perangkat');
+    });
+
+    it('validasi isian, dusun, dan foto', async () => {
+      for (const k of [{ judul: '' }, { kategori: 'Jembatan' }, { urgensi: 'Gawat' }, { dusun: 'Dusun Antah Berantah' }]) {
+        assert.equal((await patch('/complaints/1', isi(k), T.warga)).status, 400, JSON.stringify(k));
+      }
+      assert.equal((await patch('/complaints/1', isi({ foto: 'data:text/html;base64,PHNjcmlwdD4=' }), T.warga)).status, 400);
+    });
+  });
+
   // ================================================================== ubah status
   describe('ubah status', () => {
     const ubah = (id, body, token = T.admin) => patch(`/complaints/${id}/status`, body, token);
@@ -1022,6 +1122,7 @@ describe('API pengaduan desa', () => {
       for (const t of [T.warga, T.perangkat, T.kades]) {
         assert.equal((await get('/settings', t)).status, 403);
         assert.equal((await patch('/settings', { nama_desa: 'X' }, t)).status, 403);
+        assert.equal((await patch('/settings', { ttd_kades: PNG }, t)).status, 403);
         assert.equal((await post('/dusun', { nama: 'X' }, t)).status, 403);
         assert.equal((await del('/dusun/1', t)).status, 403);
       }
@@ -1030,7 +1131,7 @@ describe('API pengaduan desa', () => {
     it('GET: pengaturan + dusun dengan jumlah pengaduan', async () => {
       const s = (await get('/settings', T.admin)).data;
       assert.equal(s.nama_desa, 'Desa Banyoneng Laok');
-      assert.deepEqual(['alamat', 'dusun', 'jam', 'nama_desa', 'telepon'], Object.keys(s).sort());
+      assert.deepEqual(['alamat', 'dusun', 'jam', 'nama_desa', 'nama_kades', 'nama_sekdes', 'telepon', 'ttd_kades', 'ttd_sekdes'], Object.keys(s).sort());
       assert.equal(s.dusun.length, 7);
       assert.deepEqual(Object.keys(s.dusun[0]).sort(), ['id', 'jumlah_pengaduan', 'nama']);
       const langgali = s.dusun.find((d) => d.nama === 'Dusun Langgali');
@@ -1054,6 +1155,33 @@ describe('API pengaduan desa', () => {
       const panjang = await patch('/settings', { nama_desa: 'D'.repeat(300) }, T.admin);
       assert.equal(panjang.data.nama_desa.length, 100);
       await patch('/settings', { nama_desa: 'Desa Banyoneng Laok' }, T.admin);
+    });
+
+    it('PATCH: nama penandatangan dan tanda tangan PNG (hanya PNG)', async () => {
+      const r = await patch('/settings', {
+        nama_kades: 'H. Ahmad', nama_sekdes: 'Siti Rahma',
+        ttd_kades: PNG, ttd_sekdes: PNG,
+      }, T.admin);
+      assert.equal(r.status, 200);
+      assert.equal(r.data.nama_kades, 'H. Ahmad');
+      assert.equal(r.data.nama_sekdes, 'Siti Rahma');
+      assert.equal(r.data.ttd_kades, PNG);
+      assert.equal(r.data.ttd_sekdes, PNG);
+
+      const d = (await get(`/complaints/${kode(1)}`, T.warga)).data;
+      assert.equal(d.ttd.kades.nama, 'H. Ahmad');
+      assert.equal(d.ttd.kades.gambar, PNG);
+      assert.equal(d.ttd.sekdes.nama, 'Siti Rahma');
+      assert.equal(d.ttd.sekdes.gambar, PNG);
+
+      assert.equal((await patch('/settings', { ttd_kades: 'data:image/jpeg;base64,' + 'A'.repeat(20) }, T.admin)).status, 400);
+      assert.equal((await patch('/settings', { ttd_kades: 'data:image/png;base64,iVBORw0KGgo' + 'A'.repeat(1_500_001) }, T.admin)).status, 400);
+
+      const hapus = await patch('/settings', { ttd_kades: '', ttd_sekdes: null }, T.admin);
+      assert.equal(hapus.status, 200);
+      assert.equal(hapus.data.ttd_kades, '');
+      assert.equal(hapus.data.ttd_sekdes, '');
+      await patch('/settings', { nama_kades: 'Kepala Desa (Klebun)', nama_sekdes: 'Budi Santoso' }, T.admin);
     });
 
     it('tambah dusun: validasi dan duplikat (tak peka huruf besar/kecil)', async () => {

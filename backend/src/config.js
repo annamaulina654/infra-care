@@ -49,6 +49,8 @@ const TRANSISI = {
 // Panjang maksimum data URL foto (± 2 MB). Foto sudah dikompres di browser sebelum dikirim.
 const MAKS_FOTO = 2_800_000;
 const MAKS_FOTO_PROFIL = 400_000;
+// Tanda tangan PNG untuk bukti pengaduan. Dikecilkan di browser, transparansi dipertahankan.
+const MAKS_TTD = 1_500_000;
 
 // Jabatan yang ditampilkan di riwayat publik (nama pegawai tidak dimunculkan).
 const JABATAN = { admin: 'Sekretaris Desa', kades: 'Kepala Desa', perangkat: 'Perangkat Desa', masyarakat: 'Warga' };
@@ -61,6 +63,6 @@ const VAPID = {
 
 module.exports = {
   VAPID,
-  JABATAN, DATABASE_URL, JWT_SECRET, ROLES, KATEGORI, URGENSI, STATUS, TRANSISI, MAKS_FOTO, MAKS_FOTO_PROFIL,
+  JABATAN, DATABASE_URL, JWT_SECRET, ROLES, KATEGORI, URGENSI, STATUS, TRANSISI, MAKS_FOTO, MAKS_FOTO_PROFIL, MAKS_TTD,
   IS_PRODUCTION: process.env.NODE_ENV === 'production',
 };

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import Tombol from '../../components/ui/Tombol.jsx';
 import Bidang from '../../components/ui/Bidang.jsx';
 import Dialog from '../../components/ui/Dialog.jsx';
@@ -8,6 +8,7 @@ import { LencanaStatus, LencanaUrgensi } from '../../components/ui/Lencana.jsx';
 import { Memuat, Galat, Pesan } from '../../components/ui/Status.jsx';
 import AlurStatus from '../../components/complaints/AlurStatus.jsx';
 import RiwayatLog from '../../components/complaints/RiwayatLog.jsx';
+import BuktiPengaduan from '../../components/complaints/BuktiPengaduan.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { useJudul } from '../../hooks/useMisc.js';
@@ -23,6 +24,7 @@ export default function DetailPengaduan() {
   const { kode } = useParams();
   useJudul(kode);
   const { user } = useAuth();
+  const lokasiHalaman = useLocation();
   const kelola = PENGELOLA.includes(user.role);
   const { data: c, loading, error, reload } = useFetch(() => api(`/complaints/${encodeURIComponent(kode)}`), [kode]);
 
@@ -34,7 +36,7 @@ export default function DetailPengaduan() {
   const [pesan, setPesan] = useState('');
   const [galat, setGalat] = useState('');
   const [galatPesan, setGalatPesan] = useState('');
-  const [info, setInfo] = useState('');
+  const [info, setInfo] = useState(lokasiHalaman.state?.info || '');
   const [proses, setProses] = useState(false);
 
   const bukaStatus = () => { setBaru(c.next_status[0] || ''); setCatatan(''); setInstansi(''); setGalat(''); setDlgStatus(true); };
@@ -97,31 +99,9 @@ export default function DetailPengaduan() {
 
   return (
     <>
-      {/* Hanya tampil saat dicetak: ringkasan sebagai tanda terima. */}
+      {/* Hanya tampil saat dicetak: bukti pengaduan lengkap dengan foto dan tanda tangan. */}
       <div className="print-only">
-        <h1 className="text-xl font-extrabold">Tanda Terima Pengaduan</h1>
-        <p className="mt-1 text-sm">Kode pengaduan: <b>{c.kode}</b></p>
-        <table className="mt-4 w-full text-sm">
-          <tbody>
-            {[
-              ['Judul', c.judul],
-              ['Kategori', c.kategori],
-              ['Dusun', c.dusun],
-              ['Lokasi', c.lokasi],
-              ['Urgensi', c.urgensi],
-              ['Status', c.status],
-              ['Pelapor', c.pelapor],
-              ['Dilaporkan', tgl(c.created_at)],
-            ].map(([label, nilai]) => (
-              <tr key={label} className="border-b border-line">
-                <th className="w-36 py-2 text-left align-top font-semibold">{label}</th>
-                <td className="py-2 align-top">{nilai || '-'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {c.instansi && <p className="mt-3 text-sm">Diteruskan ke: <b>{c.instansi}</b></p>}
-        <p className="mt-6 text-xs">Dicetak pada {tgl(new Date().toISOString())}. Simpan tanda terima ini dan bawa kodenya saat menghubungi kantor desa.</p>
+        <BuktiPengaduan c={c} />
       </div>
 
       <div className="no-print">
@@ -141,6 +121,9 @@ export default function DetailPengaduan() {
                     <Tombol varian="garis" ukuran="sm" ikon={IkonSalin} onClick={salinKode}>Salin kode</Tombol>
                     <Tombol varian="garis" ukuran="sm" ikon={IkonBagikan} onClick={bagikan}>Bagikan</Tombol>
                     <Tombol varian="garis" ukuran="sm" ikon={IkonCetak} onClick={cetakBukti}>Cetak bukti</Tombol>
+                    {(pemilik || user.role === 'admin') && (
+                      <Tombol varian="garis" ukuran="sm" ikon={IkonUbah} ke={`/app/pengaduan/${c.kode}/edit`}>Edit</Tombol>
+                    )}
                   </div>
                 </div>
               </div>

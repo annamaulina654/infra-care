@@ -3,7 +3,8 @@ const express = require('express');
 const { q } = require('../db');
 const { auth } = require('../middleware/auth');
 const { wrap } = require('../middleware/errors');
-const { teks } = require('../utils/validate');
+const { teks, periksaTtd } = require('../utils/validate');
+const { MAKS_TTD } = require('../config');
 const { ambilPengaturan, simpanPengaturan } = require('../services/pengaturan');
 
 // Router ini dipasang di /api bersama router lain, jadi pembatasan admin dipasang per rute
@@ -11,8 +12,10 @@ const { ambilPengaturan, simpanPengaturan } = require('../services/pengaturan');
 const router = express.Router();
 const soloAdmin = auth(['admin']);
 
-// Panjang maksimum tiap isian.
-const BATAS = { nama_desa: 100, alamat: 200, jam: 100, telepon: 50 };
+// Panjang maksimum tiap isian teks.
+const BATAS = { nama_desa: 100, alamat: 200, jam: 100, telepon: 50, nama_kades: 100, nama_sekdes: 100 };
+// Tanda tangan disimpan sebagai data URL PNG; string kosong menghapusnya.
+const KUNCI_TTD = ['ttd_kades', 'ttd_sekdes'];
 
 const bacaSemua = async () => ({
   ...(await ambilPengaturan()),
@@ -25,12 +28,23 @@ router.get('/settings', soloAdmin, wrap(async (req, res) => res.json(await bacaS
 
 router.patch('/settings', soloAdmin, wrap(async (req, res) => {
   const body = req.body || {};
+  const simpan = [];
+
+  // Validasi seluruh isian lebih dulu supaya tidak ada data yang tersimpan setengah jalan.
   for (const kunci of Object.keys(BATAS)) {
     if (body[kunci] === undefined) continue;
     const nilai = teks(body[kunci], BATAS[kunci]);
     if (kunci === 'nama_desa' && !nilai) return res.status(400).json({ message: 'Nama desa tidak boleh kosong' });
-    await simpanPengaturan(kunci, nilai);
+    simpan.push([kunci, nilai]);
   }
+  for (const kunci of KUNCI_TTD) {
+    if (body[kunci] === undefined) continue;
+    const { ttd, error } = periksaTtd(body[kunci], MAKS_TTD);
+    if (error) return res.status(400).json({ message: error });
+    simpan.push([kunci, ttd || '']);
+  }
+
+  for (const [kunci, nilai] of simpan) await simpanPengaturan(kunci, nilai);
   res.json(await bacaSemua());
 }));
 

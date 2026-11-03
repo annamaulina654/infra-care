@@ -1,8 +1,8 @@
-// Pengaturan desa (nama, alamat kantor, jam layanan, telepon) disimpan di tabel settings
-// supaya admin bisa mengubahnya dari halaman Pengaturan tanpa mengubah kode.
+// Pengaturan desa (identitas kantor, penandatangan bukti, dan gambar tanda tangan) disimpan
+// di tabel settings supaya admin bisa mengubahnya dari halaman Pengaturan tanpa mengubah kode.
 const { q } = require('../db');
 
-const KUNCI = ['nama_desa', 'alamat', 'jam', 'telepon'];
+const KUNCI = ['nama_desa', 'alamat', 'jam', 'telepon', 'nama_kades', 'nama_sekdes', 'ttd_kades', 'ttd_sekdes'];
 
 const ambilPengaturan = async () => {
   const hasil = Object.fromEntries(KUNCI.map((k) => [k, '']));

@@ -51,9 +51,10 @@ npm test        # 86 uji; BASE_URL default http://localhost:4000
 
 Uji ini mengubah data (membuat pengaduan dan pengguna). Jalankan `npm run seed` lagi untuk mengembalikan data awal.
 
-## Mengganti nama desa dan nama aplikasi
+## Mengganti nama desa, penandatangan, dan nama aplikasi
 
 - **Nama desa, alamat, jam layanan, telepon, daftar dusun:** login sebagai sekretaris desa, buka menu **Pengaturan Desa**. Tidak perlu mengubah kode.
+- **Nama Kepala Desa/Sekretaris Desa dan gambar tanda tangan PNG:** juga di menu **Pengaturan Desa**, bagian **Penandatangan bukti pengaduan**. Unggah PNG transparan; gambar dikecilkan otomatis dan hanya dipakai di bukti cetak.
 - **Titik awal peta:** `frontend/src/config.js` (`PUSAT_PETA`), isi dengan koordinat kantor desa.
 - **Nama aplikasi:** `frontend/src/config.js` (`APP_NAME`) dan `<title>` di `frontend/index.html`.
 - Nama desa awal pada data contoh ("Desa Banyoneng Laok") ada di `backend/seed.js`.
@@ -78,6 +79,8 @@ Push butuh HTTPS (Vercel sudah) dan izin dari pengguna. Di iPhone/iPad (iOS 16.4
 
 Foto pengaduan disimpan sebagai data URL di database (dikompres di browser hingga sisi terpanjang 1280 px), karena penyimpanan berkas di Vercel tidak permanen. Untuk volume besar, pindahkan ke object storage.
 
+Bukti pengaduan yang dicetak atau disimpan sebagai PDF memuat foto bila ada, ditambah nama dan ruang tanda tangan Kepala Desa/Sekretaris Desa. Admin dapat mengunggah gambar tanda tangan PNG (transparan) di menu **Pengaturan Desa**.
+
 ### Akun contoh (kata sandi semua akun: `password123`)
 
 | Peran | Email |
@@ -93,9 +96,9 @@ Hapus atau ganti kata sandi akun contoh sebelum dipakai sungguhan.
 
 | Peran | Dapat melakukan |
 |---|---|
-| Warga | Membuat pengaduan (foto dan titik peta opsional; bisa dikirim anonim), menambah informasi/balasan pada laporannya, menyalin/membagikan kode dan mencetak bukti, menerima notifikasi |
-| Perangkat desa | Melapor atas nama warga yang datang langsung, melihat pengaduan di dusunnya, melihat peta |
-| Sekretaris desa (admin) | Semua pengaduan, mengubah status, memberi tanggapan, laporan dan ekspor CSV, kelola pengguna, pengaturan desa |
+| Warga | Membuat pengaduan (foto dan titik peta opsional; bisa dikirim anonim), mengedit pengaduannya sendiri, menambah informasi/balasan, menyalin/membagikan kode dan mencetak bukti, menerima notifikasi |
+| Perangkat desa | Melapor atas nama warga yang datang langsung, mengedit laporan yang ia input, melihat pengaduan di dusunnya, melihat peta |
+| Sekretaris desa (admin) | Semua pengaduan (termasuk mengedit isian), mengubah status, memberi tanggapan, laporan dan ekspor CSV, kelola pengguna, pengaturan desa dan tanda tangan bukti |
 | Kepala desa | Semua pengaduan, mengubah status, memberi tanggapan, laporan dan ekspor CSV |
 | Publik (tanpa login) | Daftar dan pelacakan pengaduan tanpa nama pelapor, foto, atau alamat lengkap |
 

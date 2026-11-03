@@ -20,3 +20,7 @@ export const ZOOM_AWAL = 15;
 // Batas ukuran foto setelah dikompres di browser (karakter data URL, ± 2 MB).
 export const FOTO_MAKS_SISI = 1280;
 export const FOTO_KUALITAS = 0.75;
+
+// Tanda tangan PNG: cukup 600 px agar tajam saat dicetak, tetapi tetap ringan.
+export const TTD_MAKS_SISI = 600;
+export const TTD_MAKS_DATA = 1_500_000;

@@ -82,12 +82,22 @@
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 
+/* Bukti pengaduan: foto dan ruang tanda tangan. */
+.bukti-foto { max-height: 320px; }
+
 /* Cetak / simpan PDF: sembunyikan navigasi, tampilkan isi laporan saja. */
 @media print {
   html, body { background: #fff !important; color: #000 !important; }
   .no-print { display: none !important; }
   .print-only { display: block !important; }
   .card { box-shadow: none !important; break-inside: avoid; }
+  /* Bukti boleh mengalir ke halaman kedua, tetapi foto dan blok ttd tidak terpotong. */
+  .bukti-pengaduan { border: 0 !important; padding: 0 !important; break-inside: auto !important; }
+  .bukti-pengaduan .text-muted { color: #444 !important; }
+  .bukti-foto { max-height: 65mm !important; max-width: 120mm !important; }
+  .bukti-ttd { break-inside: avoid; page-break-inside: avoid; margin-top: 10mm !important; }
+  .bukti-ruang-ttd { height: 22mm !important; min-height: 22mm !important; }
+  .bukti-ruang-ttd img { max-height: 20mm !important; max-width: 55mm !important; }
   @page { margin: 14mm; }
 }
 .print-only { display: none; }

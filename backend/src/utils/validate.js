@@ -36,4 +36,15 @@ const periksaFoto = (nilai, maks) => {
   return { foto: f };
 };
 
-module.exports = { teks, angka, emailValid, tanggalValid, halaman, periksaFoto };
+// Tanda tangan admin: hanya PNG agar latar transparan tetap bersih saat dicetak.
+// Nilai kosong / null berarti menghapus tanda tangan.
+const periksaTtd = (nilai, maks) => {
+  if (nilai == null || nilai === '') return { ttd: null };
+  const f = String(nilai);
+  if (!/^data:image\/png;base64,iVBORw0KGgo/.test(f) || f.length > maks) {
+    return { error: 'Tanda tangan harus berupa gambar PNG dan berukuran maksimal sekitar 1,5 MB' };
+  }
+  return { ttd: f };
+};
+
+module.exports = { teks, angka, emailValid, tanggalValid, halaman, periksaFoto, periksaTtd };
