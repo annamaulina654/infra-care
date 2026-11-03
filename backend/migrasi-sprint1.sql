@@ -10,3 +10,6 @@ alter table complaints add column if not exists setuju_privasi boolean not null 
 -- Menandai pengirim riwayat: sistem, warga, perangkat, admin, atau kades.
 -- Baris lama bernilai null dan tetap ditampilkan tanpa label pengirim.
 alter table complaint_logs add column if not exists oleh text;
+
+-- Menyimpan bukti foto perubahan status (mis. tahap Dalam Perbaikan).
+alter table complaint_logs add column if not exists foto text;
