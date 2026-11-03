@@ -173,7 +173,8 @@ export default function BuatPengaduan() {
           </Kartu>
 
           <Kartu>
-            <h2 className="mb-3 text-sm font-semibold">Titik di peta (opsional)</h2>
+            <h2 className="mb-1 text-sm font-semibold">Titik lokasi di peta (opsional)</h2>
+            <p className="mb-3 text-xs text-muted">Aktifkan GPS agar titik mengikuti posisi Anda saat ini, atau ketuk peta untuk memilih manual.</p>
             <PilihLokasi nilai={titik} ubah={setTitik} />
           </Kartu>
 
