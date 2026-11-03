@@ -33,6 +33,10 @@ export const STATUS = [
 // Tahapan normal yang ditampilkan sebagai garis kemajuan.
 export const ALUR = ['Diterima', 'Diverifikasi', 'Masuk Perencanaan', 'Dalam Perbaikan', 'Selesai'];
 
+// Status yang wajib disertai foto bukti, beserta keterangan fotonya (dipakai di form, riwayat, dan cetakan).
+export const PERLU_FOTO = ['Dalam Perbaikan', 'Selesai'];
+export const LABEL_FOTO = { 'Dalam Perbaikan': 'Foto saat pengerjaan', 'Selesai': 'Foto setelah perbaikan' };
+
 export const STATUS_AKHIR = ['Selesai', 'Ditolak'];
 
 // Tampilan tiap status: ikon, kelas badge (terang + gelap), dan warna penanda di peta.

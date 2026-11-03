@@ -1,4 +1,4 @@
-import { STATUS_GAYA } from '../../lib/constants.js';
+import { STATUS_GAYA, LABEL_FOTO } from '../../lib/constants.js';
 import { LencanaStatus } from '../ui/Lencana.jsx';
 import { tgl, cx } from '../../lib/format.js';
 
@@ -26,7 +26,12 @@ export default function RiwayatLog({ logs = [] }) {
             <time className="text-xs text-muted">{tgl(l.created_at)}</time>
           </div>
           {l.catatan && <p className="mt-1.5 whitespace-pre-line text-sm">{l.catatan}</p>}
-          {l.foto && <img src={l.foto} alt="Bukti foto" className="mt-2 max-h-64 w-full rounded-xl object-cover border border-line" />}
+          {l.foto && (
+            <figure className="mt-2">
+              <img src={l.foto} alt={LABEL_FOTO[l.status] || 'Bukti foto'} className="max-h-64 w-full rounded-xl object-cover border border-line" />
+              <figcaption className="mt-1 text-xs font-semibold text-muted">{LABEL_FOTO[l.status] || 'Bukti foto'}</figcaption>
+            </figure>
+          )}
         </li>
       ))}
     </ol>

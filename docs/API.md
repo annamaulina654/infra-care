@@ -16,7 +16,7 @@ Kode pengaduan: `ADU-<tahun>-<5 digit>`.
   - Diteruskan ke Instansi → Dalam Perbaikan, Selesai, Ditolak
   - Selesai, Ditolak → (final)
   Transisi tidak valid → 400 `Status "A" tidak bisa langsung menjadi "B"`.
-  `Diteruskan ke Instansi` wajib `instansi`; `Ditolak` wajib `catatan` ≥ 3 karakter; `Dalam Perbaikan` wajib `catatan` ≥ 3 karakter dan `foto` (data URL jpeg/png ≤ ~2MB) sebagai bukti foto yang dilihat pelapor.
+  `Diteruskan ke Instansi` wajib `instansi`; `Ditolak` wajib `catatan` ≥ 3 karakter; `Dalam Perbaikan` wajib `catatan` ≥ 3 karakter dan `foto` (data URL jpeg/png ≤ ~2MB, bukti pengerjaan); `Selesai` wajib `foto` (foto setelah perbaikan), `catatan` opsional. Foto disimpan di riwayat dan tampil di pelacakan publik. Tanpa foto → 400 ("Foto bukti pengerjaan wajib dilampirkan" / "Foto setelah perbaikan wajib dilampirkan").
 
 ## Auth
 - POST /api/auth/login `{email,password}` → `{token,user}`; 400 salah; 429 setelah 5 gagal / 15 menit (IP+email)
@@ -30,8 +30,8 @@ Kode pengaduan: `ADU-<tahun>-<5 digit>`.
 - GET /api/public/info → `{desa, kontak:{alamat,jam,telepon}, dusun:[nama,...]}`  (dari tabel settings + dusun)
 - GET /api/public/stats → `{total,selesai,proses,perencanaan}` (proses = bukan Selesai/Ditolak)
 - GET /api/public/complaints?status&kategori&dusun&q&page=1&limit=12 → `{data:[{kode,judul,kategori,dusun,status,urgensi,instansi,created_at,updated_at}],total,page,limit}`
-  Tanpa nama pelapor, tanpa foto, tanpa deskripsi/lokasi/koordinat. limit maks 50. Urut terbaru.
-- GET /api/public/complaints/:kode → `{kode,judul,kategori,dusun,status,urgensi,instansi,created_at,updated_at,logs:[{status,catatan,oleh,created_at}]}`; 404 bila tidak ada
+  Tanpa nama pelapor, tanpa foto pengaduan, tanpa deskripsi/lokasi/koordinat. limit maks 50. Urut terbaru.
+- GET /api/public/complaints/:kode → `{kode,judul,kategori,dusun,status,urgensi,instansi,created_at,updated_at,logs:[{status,catatan,foto,oleh,created_at}]}`; 404 bila tidak ada. `logs[].foto` hanya berisi foto bukti penanganan dari pemerintah desa (status Dalam Perbaikan dan Selesai); foto pengaduan dari warga tidak pernah dikirim
 
 ## Pengaduan [login]
 Lingkup data: masyarakat = miliknya; perangkat = dusunnya + yang ia input; admin & kades = semua.

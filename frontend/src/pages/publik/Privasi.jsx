@@ -18,7 +18,7 @@ const BAGIAN = [
   },
   {
     judul: 'Siapa yang dapat melihat',
-    isi: 'Perangkat desa di dusun Anda, sekretaris desa, dan kepala desa dapat melihat data lengkap untuk keperluan verifikasi. Halaman publik hanya menampilkan judul, kategori, dusun, status, dan riwayat tanpa nama pelapor, foto, alamat rinci, maupun titik koordinat.',
+    isi: 'Perangkat desa di dusun Anda, sekretaris desa, dan kepala desa dapat melihat data lengkap untuk keperluan verifikasi. Halaman publik hanya menampilkan judul, kategori, dusun, status, dan riwayat penanganan, termasuk foto bukti pengerjaan dan foto setelah perbaikan yang diunggah pemerintah desa. Nama pelapor, foto yang diunggah pelapor, alamat rinci, dan titik koordinat tidak ditampilkan.',
   },
   {
     judul: 'Pilihan anonim',

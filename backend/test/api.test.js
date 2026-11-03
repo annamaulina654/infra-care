@@ -786,7 +786,8 @@ describe('API pengaduan desa', () => {
       assert.deepEqual(d.next_status, ['Dalam Perbaikan', 'Selesai', 'Ditolak']);
       const n = (await get('/notifications', T.warga2)).data;
       assert.ok(n.some((x) => x.isi.includes('Dinas Kesehatan')), 'instansi tujuan ikut di notifikasi');
-      assert.equal((await ubah(7, { status: 'Selesai', catatan: 'Sudah ditangani dinas' })).status, 200);
+      assert.equal((await ubah(7, { status: 'Selesai', catatan: 'Sudah ditangani dinas' })).status, 400, 'Selesai wajib foto');
+      assert.equal((await ubah(7, { status: 'Selesai', catatan: 'Sudah ditangani dinas', foto: PNG })).status, 200);
       assert.equal((await get(`/complaints/${kode(7)}`, T.admin)).data.instansi, 'Dinas Kesehatan', 'instansi tetap tercatat');
     });
 
@@ -811,13 +812,35 @@ describe('API pengaduan desa', () => {
     it('alur penuh: Diverifikasi → Masuk Perencanaan → Dalam Perbaikan → Selesai', async () => {
       assert.equal((await ubah(3, { status: 'Masuk Perencanaan', catatan: 'Masuk usulan APBDes' })).status, 200);
       assert.deepEqual((await get(`/complaints/${kode(3)}`, T.admin)).data.next_status, ['Dalam Perbaikan', 'Diteruskan ke Instansi', 'Ditolak']);
-      assert.equal((await ubah(3, { status: 'Dalam Perbaikan' })).status, 200);
+      // Dalam Perbaikan: catatan DAN foto wajib; foto harus gambar yang valid.
+      const tanpaFoto = await ubah(3, { status: 'Dalam Perbaikan', catatan: 'Pengerjaan dimulai' });
+      assert.equal(tanpaFoto.status, 400);
+      assert.equal(tanpaFoto.data.message, 'Foto bukti pengerjaan wajib dilampirkan');
+      assert.equal((await ubah(3, { status: 'Dalam Perbaikan', foto: PNG })).status, 400, 'tanpa catatan');
+      assert.equal((await ubah(3, { status: 'Dalam Perbaikan', catatan: 'Pengerjaan dimulai', foto: 'bukan-gambar' })).status, 400, 'format salah');
+      assert.equal((await get(`/complaints/${kode(3)}`, T.admin)).data.status, 'Masuk Perencanaan', 'gagal validasi tidak mengubah status');
+      assert.equal((await ubah(3, { status: 'Dalam Perbaikan', catatan: 'Pengerjaan dimulai', foto: PNG })).status, 200);
       const sebelum = (await get(`/complaints/${kode(3)}`, T.admin)).data.logs.length;
-      const r = await ubah(3, { status: 'Selesai' });
+      // Selesai: foto setelah perbaikan wajib, catatan opsional.
+      const selesaiTanpaFoto = await ubah(3, { status: 'Selesai' });
+      assert.equal(selesaiTanpaFoto.status, 400);
+      assert.equal(selesaiTanpaFoto.data.message, 'Foto setelah perbaikan wajib dilampirkan');
+      assert.equal((await get(`/complaints/${kode(3)}`, T.admin)).data.logs.length, sebelum, 'tidak ada log dari percobaan gagal');
+      const r = await ubah(3, { status: 'Selesai', foto: PNG });
       assert.equal(r.status, 200);
       const d = (await get(`/complaints/${kode(3)}`, T.admin)).data;
       assert.equal(d.logs.length, sebelum + 1);
       assert.equal(d.logs.at(-1).catatan, 'Status diubah oleh Sekretaris Desa');
+      assert.equal(d.logs.at(-1).foto, PNG, 'foto setelah perbaikan tersimpan di riwayat');
+      assert.equal(d.logs.at(-2).foto, PNG, 'foto pengerjaan tersimpan di riwayat');
+    });
+
+    it('foto bukti tampil di pelacakan publik, foto pengaduan warga tidak', async () => {
+      const p = (await get(`/public/complaints/${kode(3)}`)).data;
+      assert.ok(p.logs.some((l) => l.status === 'Selesai' && l.foto === PNG));
+      assert.ok(p.logs.some((l) => l.status === 'Dalam Perbaikan' && l.foto === PNG));
+      assert.ok(!('foto' in p), 'foto pengaduan awal tidak dikirim ke publik');
+      assert.ok(!('pelapor' in p) && !('lat' in p) && !('lng' in p));
     });
 
     it('statistik ikut berubah', async () => {

@@ -1,5 +1,6 @@
 import { useDesa } from '../../context/DesaContext.jsx';
 import { tgl, tglPendek } from '../../lib/format.js';
+import { LABEL_FOTO } from '../../lib/constants.js';
 
 // Bukti pengaduan yang tampil di layar dan dipakai saat mencetak / menyimpan PDF.
 // Foto pengaduan dan blok tanda tangan kepala desa + sekretaris desa ikut dicetak.
@@ -8,6 +9,9 @@ export default function BuktiPengaduan({ c }) {
   const ttd = c.ttd || {};
   const kades = ttd.kades || {};
   const sekdes = ttd.sekdes || {};
+
+  // Foto bukti penanganan (saat pengerjaan dan setelah perbaikan) dari riwayat, urut waktu.
+  const fotoPenanganan = (c.logs || []).filter((l) => l.foto);
 
   const rincian = [
     ['Kode pengaduan', c.kode],
@@ -53,8 +57,22 @@ export default function BuktiPengaduan({ c }) {
       {c.foto && (
         <figure className="mt-5 break-inside-avoid">
           <img src={c.foto} alt={`Foto ${c.judul}`} className="bukti-foto mx-auto block max-h-80 w-auto max-w-full rounded-lg border border-line object-contain" />
-          <figcaption className="mt-1 text-center text-xs text-muted">Foto pengaduan</figcaption>
+          <figcaption className="mt-1 text-center text-xs text-muted">{fotoPenanganan.length ? 'Foto pengaduan (sebelum perbaikan)' : 'Foto pengaduan'}</figcaption>
         </figure>
+      )}
+
+      {fotoPenanganan.length > 0 && (
+        <section className="mt-5">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Bukti penanganan</h2>
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            {fotoPenanganan.map((l, i) => (
+              <figure key={i} className="break-inside-avoid">
+                <img src={l.foto} alt={LABEL_FOTO[l.status] || 'Bukti foto'} className="bukti-foto block max-h-56 w-full rounded-lg border border-line object-contain" />
+                <figcaption className="mt-1 text-center text-xs text-muted">{LABEL_FOTO[l.status] || l.status} · {tglPendek(l.created_at)}</figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
       )}
 
       <div className="bukti-ttd mt-8 grid grid-cols-2 gap-8 break-inside-avoid text-center text-sm">

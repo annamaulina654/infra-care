@@ -13,6 +13,7 @@ const { ambilPengaturan } = require('../services/pengaturan');
 
 const router = express.Router();
 const PENGELOLA = ['admin', 'kades'];
+const PERLU_FOTO = ['Dalam Perbaikan', 'Selesai']; // status yang wajib disertai bukti foto
 
 // Kolom untuk daftar: tanpa foto (data URL besar), cukup penanda ada_foto.
 const KOLOM_DAFTAR = `c.id, c.kode, c.judul, c.kategori, c.deskripsi, c.lokasi, c.dusun, c.lat, c.lng, c.perkiraan,
@@ -257,13 +258,17 @@ router.patch('/complaints/:id/status', auth(PENGELOLA), wrap(async (req, res) =>
   if (status === 'Ditolak' && catatan.length < 3) {
     return res.status(400).json({ message: 'Alasan penolakan wajib diisi' });
   }
+  // Bukti foto wajib pada dua tahap: saat pengerjaan dimulai dan setelah selesai (sebelum/sesudah).
   let fotoSimpan = null;
-  if (status === 'Dalam Perbaikan') {
-    if (catatan.length < 3) {
+  if (PERLU_FOTO.includes(status)) {
+    if (status === 'Dalam Perbaikan' && catatan.length < 3) {
       return res.status(400).json({ message: 'Catatan untuk pelapor wajib diisi' });
     }
     const cekFoto = periksaFoto(req.body?.foto, MAKS_FOTO);
     if (cekFoto.error) return res.status(400).json({ message: cekFoto.error });
+    if (!cekFoto.foto) {
+      return res.status(400).json({ message: status === 'Selesai' ? 'Foto setelah perbaikan wajib dilampirkan' : 'Foto bukti pengerjaan wajib dilampirkan' });
+    }
     fotoSimpan = cekFoto.foto;
   }
 
@@ -274,7 +279,7 @@ router.patch('/complaints/:id/status', auth(PENGELOLA), wrap(async (req, res) =>
     [lama.id, status, catatanLog, fotoSimpan, req.user.role]);
   // Sertakan alasan/instansi di notifikasi supaya pelapor tidak perlu membuka detail
   // hanya untuk mengetahui mengapa laporannya ditolak atau diteruskan.
-  const rincian = [instansi ? `Diteruskan ke ${instansi}.` : '', catatan, status === 'Dalam Perbaikan' ? '(dilengkapi bukti foto)' : ''].filter(Boolean).join(' ');
+  const rincian = [instansi ? `Diteruskan ke ${instansi}.` : '', catatan, fotoSimpan ? '(dilengkapi bukti foto)' : ''].filter(Boolean).join(' ');
   await notifikasiUser(lama.user_id, 'Update', 'Update Status Pengaduan',
     `Status pengaduan ${lama.kode} menjadi "${status}".${rincian ? ` ${rincian}` : ''}`);
   res.json({ id: lama.id, kode: lama.kode, status });

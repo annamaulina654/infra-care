@@ -14,7 +14,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { useJudul } from '../../hooks/useMisc.js';
 import { api } from '../../lib/api.js';
 import { kompresFoto } from '../../lib/image.js';
-import { KATEGORI_INFO, PENGELOLA, STATUS_GAYA } from '../../lib/constants.js';
+import { KATEGORI_INFO, PENGELOLA, STATUS_GAYA, PERLU_FOTO } from '../../lib/constants.js';
 import { bagikanPengaduan, salinTeks, cetakBukti } from '../../lib/bagikan.js';
 import { IkonKiri, IkonLokasi, IkonUser, IkonPesan, IkonUbah, IkonKirim, IkonPeta, IkonSalin, IkonBagikan, IkonCetak, IkonKamera, IkonTutup } from '../../lib/icons.js';
 import { tgl } from '../../lib/format.js';
@@ -68,9 +68,13 @@ export default function DetailPengaduan() {
     e.preventDefault();
     setGalat('');
     setGalatFotoBukti('');
+    if (PERLU_FOTO.includes(baru) && !fotoBukti) {
+      setGalatFotoBukti(baru === 'Selesai' ? 'Foto setelah perbaikan wajib dilampirkan.' : 'Foto bukti pengerjaan wajib dilampirkan.');
+      return;
+    }
     setProses(true);
     try {
-      await api(`/complaints/${c.id}/status`, { method: 'PATCH', body: { status: baru, catatan: catatan.trim() || undefined, instansi: baru === 'Diteruskan ke Instansi' ? instansi.trim() : undefined, foto: baru === 'Dalam Perbaikan' ? fotoBukti : undefined } });
+      await api(`/complaints/${c.id}/status`, { method: 'PATCH', body: { status: baru, catatan: catatan.trim() || undefined, instansi: baru === 'Diteruskan ke Instansi' ? instansi.trim() : undefined, foto: PERLU_FOTO.includes(baru) ? fotoBukti : undefined } });
       setDlgStatus(false);
       setInfo(`Status diubah menjadi "${baru}".`);
       reload();
@@ -206,7 +210,7 @@ export default function DetailPengaduan() {
                 const G = STATUS_GAYA[s];
                 return (
                   <label key={s} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3.5 text-sm font-semibold ${baru === s ? 'border-brand bg-brand-soft text-brand' : 'border-line hover:bg-surface2'}`}>
-                    <input type="radio" name="status" value={s} checked={baru === s} onChange={() => setBaru(s)} className="sr-only" />
+                    <input type="radio" name="status" value={s} checked={baru === s} onChange={() => { setBaru(s); setFotoBukti(null); setGalatFotoBukti(''); }} className="sr-only" />
                     <G.ikon className="size-4" aria-hidden />{s}
                   </label>
                 );
@@ -219,15 +223,15 @@ export default function DetailPengaduan() {
               <datalist id="daftar-instansi">{INSTANSI.map((i) => <option key={i} value={i} />)}</datalist>
             </Bidang>
           )}
-          {baru === 'Dalam Perbaikan' ? (
+          {PERLU_FOTO.includes(baru) ? (
             <>
-              <Bidang label="Catatan untuk pelapor (wajib)" id="catatan" wajib>
-                <textarea id="catatan" rows={3} required minLength={3} value={catatan} onChange={(e) => setCatatan(e.target.value)} className="field resize-y" />
+              <Bidang label={baru === 'Dalam Perbaikan' ? 'Catatan untuk pelapor (wajib)' : 'Catatan untuk pelapor (opsional)'} id="catatan" wajib={baru === 'Dalam Perbaikan'}>
+                <textarea id="catatan" rows={3} required={baru === 'Dalam Perbaikan'} minLength={baru === 'Dalam Perbaikan' ? 3 : undefined} value={catatan} onChange={(e) => setCatatan(e.target.value)} className="field resize-y" />
               </Bidang>
-              <Bidang label="Bukti foto (wajib)" id="foto-bukti" wajib petunjuk="JPG atau PNG. Foto akan dikompresi otomatis sebelum dikirim.">
+              <Bidang label={baru === 'Selesai' ? 'Foto setelah perbaikan (wajib)' : 'Foto bukti pengerjaan (wajib)'} id="foto-bukti" wajib petunjuk="JPG atau PNG, dikompresi otomatis. Foto ini ikut tampil di halaman pelacakan publik, jadi hindari memotret wajah orang atau plat kendaraan.">
                 {fotoBukti
-                  ? <div className="relative"><img src={fotoBukti} alt="Pratinjau bukti foto" className="max-h-64 w-full rounded-xl object-cover" /><button type="button" onClick={() => setFotoBukti(null)} aria-label="Hapus foto" className="absolute right-2 top-2 grid size-9 place-items-center rounded-full bg-slate-900/70 text-white"><IkonTutup aria-hidden /></button></div>
-                  : <button type="button" onClick={() => berkasBuktiRef.current?.click()} className="flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line text-sm font-semibold text-muted hover:bg-surface2"><IkonKamera className="size-6" aria-hidden />Ambil atau pilih foto bukti</button>}
+                  ? <div className="relative"><img src={fotoBukti} alt="Pratinjau foto bukti" className="max-h-64 w-full rounded-xl object-cover" /><button type="button" onClick={() => setFotoBukti(null)} aria-label="Hapus foto" className="absolute right-2 top-2 grid size-9 place-items-center rounded-full bg-slate-900/70 text-white"><IkonTutup aria-hidden /></button></div>
+                  : <button type="button" onClick={() => berkasBuktiRef.current?.click()} className="flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line text-sm font-semibold text-muted hover:bg-surface2"><IkonKamera className="size-6" aria-hidden />{baru === 'Selesai' ? 'Ambil atau pilih foto setelah perbaikan' : 'Ambil atau pilih foto pengerjaan'}</button>}
                 <input ref={berkasBuktiRef} type="file" accept="image/jpeg,image/png" onChange={pilihFotoBukti} className="sr-only" aria-label="Pilih foto bukti" />
                 {galatFotoBukti && <p role="alert" className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">{galatFotoBukti}</p>}
               </Bidang>

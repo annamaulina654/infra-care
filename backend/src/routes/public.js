@@ -1,5 +1,6 @@
 // /api/public — halaman yang boleh dibuka tanpa login.
-// Prinsip: tidak ada nama pelapor, foto, deskripsi, alamat rinci, atau koordinat di sini.
+// Prinsip: tidak ada nama pelapor, foto pengaduan dari warga, deskripsi, alamat rinci, atau koordinat di sini.
+// Pengecualian: riwayat penanganan membawa foto bukti dari pemerintah desa (saat pengerjaan dan setelah perbaikan).
 const express = require('express');
 const { q } = require('../db');
 const { wrap } = require('../middleware/errors');

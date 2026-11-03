@@ -22,7 +22,7 @@ Ringkasan untuk laporan: apa yang diganti dan mengapa.
 - `JWT_SECRET` wajib di production (tidak ada nilai cadangan).
 - Pembatasan percobaan masuk: 5 kali gagal per 15 menit per kombinasi IP dan email.
 - Ekspor CSV menetralkan sel yang diawali `=`, `+`, `-`, `@` (pencegahan CSV injection) dan menulis pelapor anonim sebagai "Anonim".
-- Data publik tidak memuat nama pelapor, foto, deskripsi, maupun lokasi; riwayat publik hanya menyebut jabatan (bukan nama pegawai) pada catatan perubahan status.
+- Data publik tidak memuat nama pelapor, foto pengaduan dari warga, deskripsi, maupun lokasi; riwayat publik hanya menyebut jabatan (bukan nama pegawai) pada catatan perubahan status. Satu-satunya foto di halaman publik adalah foto bukti penanganan dari pemerintah desa (saat pengerjaan dan setelah perbaikan).
 - Pesan galat 500 tidak membocorkan detail teknis.
 
 ## Notifikasi push
