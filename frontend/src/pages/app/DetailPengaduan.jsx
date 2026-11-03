@@ -138,10 +138,11 @@ export default function DetailPengaduan() {
                     <Tombol varian="garis" ukuran="sm" ikon={IkonSalin} onClick={salinKode}>Salin kode</Tombol>
                     <Tombol varian="garis" ukuran="sm" ikon={IkonBagikan} onClick={bagikan}>Bagikan</Tombol>
                     <Tombol varian="garis" ukuran="sm" ikon={IkonCetak} onClick={cetakBukti}>Cetak bukti</Tombol>
-                    {(pemilik || user.role === 'admin') && (
+                    {c.bisa_edit && (
                       <Tombol varian="garis" ukuran="sm" ikon={IkonUbah} ke={`/app/pengaduan/${c.kode}/edit`}>Edit</Tombol>
                     )}
                   </div>
+                  {!c.bisa_edit && c.alasan_edit && <p className="mt-2 text-xs text-muted">{c.alasan_edit}.</p>}
                 </div>
               </div>
               <p className="mt-5 whitespace-pre-line text-sm leading-relaxed">{c.deskripsi}</p>

@@ -96,9 +96,9 @@ Hapus atau ganti kata sandi akun contoh sebelum dipakai sungguhan.
 
 | Peran | Dapat melakukan |
 |---|---|
-| Warga | Membuat pengaduan (foto dan titik peta opsional; bisa dikirim anonim), mengedit pengaduannya sendiri, menambah informasi/balasan, menyalin/membagikan kode dan mencetak bukti, menerima notifikasi |
-| Perangkat desa | Melapor atas nama warga yang datang langsung, mengedit laporan yang ia input, melihat pengaduan di dusunnya, melihat peta |
-| Sekretaris desa (admin) | Semua pengaduan (termasuk mengedit isian), mengubah status, memberi tanggapan, laporan dan ekspor CSV, kelola pengguna, pengaturan desa dan tanda tangan bukti |
+| Warga | Membuat pengaduan (foto dan titik peta opsional; bisa dikirim anonim), mengedit pengaduannya sendiri selama masih berstatus Diterima, menambah informasi/balasan, menyalin/membagikan kode dan mencetak bukti, menerima notifikasi |
+| Perangkat desa | Melapor atas nama warga yang datang langsung, mengedit laporan yang ia input selama masih berstatus Diterima, melihat pengaduan di dusunnya, melihat peta |
+| Sekretaris desa (admin) | Semua pengaduan (mengedit isian selama belum Selesai/Ditolak), mengubah status, memberi tanggapan, laporan dan ekspor CSV, kelola pengguna, pengaturan desa dan tanda tangan bukti |
 | Kepala desa | Semua pengaduan, mengubah status, memberi tanggapan, laporan dan ekspor CSV |
 | Publik (tanpa login) | Daftar dan pelacakan pengaduan tanpa nama pelapor, foto, atau alamat lengkap |
 

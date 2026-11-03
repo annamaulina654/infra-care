@@ -1,4 +1,5 @@
 // Aturan hak akses data pengaduan per peran.
+const { TRANSISI } = require('../config');
 
 // Batasi pengaduan (alias tabel "c") sesuai peran. Dipasang ke buatFilter().
 //   masyarakat      : hanya pengaduan miliknya
@@ -16,6 +17,22 @@ const bolehLihat = (user, c) =>
 
 const adminAtauPemilik = (user, c) => user.role === 'admin' || c.user_id === user.id;
 
+// Aturan mengedit ISI pengaduan (status punya alur sendiri):
+//   - pemilik laporan (warga, atau perangkat yang menginput) : hanya saat status masih "Diterima"
+//   - sekretaris desa (admin)                                 : semua status kecuali final
+//   - kepala desa dan peran lain                              : tidak boleh
+//   - status final (Selesai/Ditolak)                          : terkunci untuk semua, supaya bukti cetak dan riwayat tetap cocok
+// Mengembalikan teks alasan bila TIDAK boleh, atau null bila boleh.
+const alasanTolakEdit = (user, c) => {
+  const admin = user.role === 'admin';
+  if (!admin && c.user_id !== user.id) return 'Anda tidak diizinkan mengedit pengaduan ini';
+  if (TRANSISI[c.status]?.length === 0) return `Pengaduan yang sudah berstatus "${c.status}" tidak dapat diedit lagi`;
+  if (!admin && c.status !== 'Diterima') {
+    return 'Pengaduan sudah diproses pemerintah desa sehingga isinya tidak dapat diubah. Tambahkan informasi lewat kolom pesan';
+  }
+  return null;
+};
+
 // Pengaduan anonim: nama pelapor hanya terlihat oleh sekretaris desa (untuk tindak lanjut)
 // dan oleh pemilik laporan. Peran lain hanya melihat "Anonim".
 const namaPelapor = (c, user) => {
@@ -32,4 +49,4 @@ const rapikan = (c, user) => {
   return { ...aman, pelapor: namaPelapor(c, user) };
 };
 
-module.exports = { batasi, bolehLihat, rapikan, adminAtauPemilik };
+module.exports = { batasi, bolehLihat, rapikan, adminAtauPemilik, alasanTolakEdit };

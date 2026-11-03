@@ -6,7 +6,7 @@ const { wrap } = require('../middleware/errors');
 const { KATEGORI, URGENSI, STATUS, TRANSISI, MAKS_FOTO, JABATAN } = require('../config');
 const { teks, angka, halaman, periksaFoto } = require('../utils/validate');
 const { buatFilter, polaCari } = require('../utils/filter');
-const { batasi, bolehLihat, rapikan, adminAtauPemilik } = require('../utils/access');
+const { batasi, bolehLihat, rapikan, adminAtauPemilik, alasanTolakEdit } = require('../utils/access');
 const limiter = require('../middleware/rateLimit');
 const { notifikasiUser, notifikasiRole, notifikasiPerangkatDusun } = require('../services/notifikasi');
 const { ambilPengaturan } = require('../services/pengaturan');
@@ -93,6 +93,10 @@ router.get('/complaints/:kode', auth(), wrap(async (req, res) => {
     out.pelapor_nama = c.pelapor_nama || '';
     out.pembuat_role = pembuat_role;
   }
+  // Tombol Edit hanya tampil bila boleh; alasan penolakan hanya dikirim ke admin/pemilik.
+  const tolakEdit = alasanTolakEdit(req.user, c);
+  out.bisa_edit = tolakEdit === null;
+  if (tolakEdit && adminAtauPemilik(req.user, c)) out.alasan_edit = tolakEdit;
   // Nama dan tanda tangan penandatangan ikut agar bukti pengaduan bisa dicetak semua pihak.
   const p = await ambilPengaturan();
   out.ttd = {
@@ -157,10 +161,11 @@ router.post('/complaints', auth(['masyarakat', 'perangkat']),
   res.status(201).json({ id: c.id, kode: c.kode });
 }));
 
-// ------------------------------------------------------------ edit pengaduan (admin atau pemilik)
+// ------------------------------------------------------------ edit pengaduan
 
-// Admin dan pemilik boleh memperbaiki seluruh isian pengaduan. Status tidak ikut diubah
-// karena punya alur sendiri lewat PATCH /complaints/:id/status.
+// Siapa dan kapan boleh mengedit diatur di utils/access.js (alasanTolakEdit): pemilik hanya saat
+// "Diterima", admin selama belum final, kades tidak boleh. Status tidak ikut diubah karena punya
+// alur sendiri lewat PATCH /complaints/:id/status.
 router.patch('/complaints/:id', auth(), wrap(async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(404).json({ message: 'Pengaduan tidak ditemukan' });
@@ -169,9 +174,8 @@ router.patch('/complaints/:id', auth(), wrap(async (req, res) => {
     `select c.*, u.role as pembuat_role
      from complaints c join users u on u.id = c.user_id where c.id=$1`, [id]);
   if (!lama) return res.status(404).json({ message: 'Pengaduan tidak ditemukan' });
-  if (!adminAtauPemilik(req.user, lama)) {
-    return res.status(403).json({ message: 'Tidak diizinkan mengedit pengaduan ini' });
-  }
+  const tolak = alasanTolakEdit(req.user, lama);
+  if (tolak) return res.status(403).json({ message: tolak });
 
   const b = req.body || {};
   const perangkat = lama.pembuat_role === 'perangkat';
@@ -185,7 +189,10 @@ router.patch('/complaints/:id', auth(), wrap(async (req, res) => {
   const urgensi = teks(b.urgensi, 10);
   // Laporan perangkat dibuat atas nama warga, jadi nama warga tetap wajib diisi.
   const pelaporNama = perangkat ? teks(b.pelapor_nama ?? lama.pelapor_nama, 100) : null;
-  const anonim = perangkat ? false : (b.anonim === undefined ? lama.anonim : b.anonim === true || b.anonim === 'true');
+  // Pilihan anonim milik pelapor: hanya pemilik yang boleh mengubahnya. Admin tidak boleh membuka
+  // identitas pelapor lewat edit (nilai anonim dari admin diabaikan).
+  const pemilik = lama.user_id === req.user.id;
+  const anonim = perangkat ? false : (pemilik && b.anonim !== undefined ? b.anonim === true || b.anonim === 'true' : lama.anonim);
 
   if (!judul || !deskripsi || !lokasi || !dusun || !KATEGORI.includes(kategori) || !URGENSI.includes(urgensi)) {
     return res.status(400).json({ message: 'Lengkapi judul, kategori, deskripsi, dusun, lokasi, dan urgensi' });
@@ -210,14 +217,29 @@ router.patch('/complaints/:id', auth(), wrap(async (req, res) => {
   const lat = 'lat' in b ? angka(b.lat, -90, 90) : lama.lat;
   const lng = 'lng' in b ? angka(b.lng, -180, 180) : lama.lng;
 
+  // Catat bagian yang berubah (hanya nama bagian, bukan isinya, karena riwayat ikut tampil di halaman publik).
+  const berubah = [];
+  if (judul !== lama.judul) berubah.push('judul');
+  if (kategori !== lama.kategori) berubah.push('kategori');
+  if (deskripsi !== lama.deskripsi) berubah.push('uraian');
+  if (lokasi !== lama.lokasi) berubah.push('lokasi');
+  if (dusun !== lama.dusun) berubah.push('dusun');
+  if ((perkiraan || null) !== (lama.perkiraan || null)) berubah.push('perkiraan');
+  if (urgensi !== lama.urgensi) berubah.push('urgensi');
+  if (foto !== lama.foto) berubah.push('foto');
+  if (lat !== lama.lat || lng !== lama.lng) berubah.push('titik peta');
+  if ((pelaporNama || '') !== (lama.pelapor_nama || '') || anonim !== lama.anonim) berubah.push('data pelapor');
+  // Tidak ada yang berubah: jangan menambah riwayat atau mengirim notifikasi.
+  if (!berubah.length) return res.json({ id: lama.id, kode: lama.kode });
+
   await q(
     `update complaints set judul=$1, kategori=$2, deskripsi=$3, foto=$4, lokasi=$5, dusun=$6,
        lat=$7, lng=$8, perkiraan=$9, urgensi=$10, anonim=$11, pelapor_nama=$12, updated_at=now()
      where id=$13`,
     [judul, kategori, deskripsi, foto, lokasi, dusun, lat, lng, perkiraan, urgensi, anonim, pelaporNama, lama.id]);
   await q(
-    "insert into complaint_logs(complaint_id,status,catatan,oleh) values($1,$2,'Data pengaduan diubah',$3)",
-    [lama.id, lama.status, req.user.role]);
+    'insert into complaint_logs(complaint_id,status,catatan,oleh) values($1,$2,$3,$4)',
+    [lama.id, lama.status, `Data pengaduan diubah: ${berubah.join(', ')}`, req.user.role]);
 
   // Pemilik diberi tahu bila yang mengedit adalah admin, supaya perubahan tidak mengejutkan.
   if (req.user.id !== lama.user_id) {

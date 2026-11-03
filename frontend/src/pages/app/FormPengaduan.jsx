@@ -26,6 +26,7 @@ export default function FormPengaduan({ mode = 'buat', awal, kode = '' }) {
   const { dusun } = useDesa();
   const nav = useNavigate();
   const berkasRef = useRef(null);
+  const pemilikForm = !edit || awal?.user_id === user.id;
   const perangkat = edit ? awal?.pembuat_role === 'perangkat' : user.role === 'perangkat';
   useJudul(edit ? 'Edit Pengaduan' : perangkat ? 'Lapor atas nama warga' : 'Buat Pengaduan');
 
@@ -83,7 +84,7 @@ export default function FormPengaduan({ mode = 'buat', awal, kode = '' }) {
         lat: titik?.[0] ?? null, lng: titik?.[1] ?? null,
       };
       if (perangkat) body.pelapor_nama = f.pelapor_nama.trim();
-      else body.anonim = f.anonim;
+      else if (pemilikForm) body.anonim = f.anonim;
 
       if (edit) {
         // Foto hanya dikirim bila berubah; null berarti menghapus foto lama.
@@ -224,7 +225,7 @@ export default function FormPengaduan({ mode = 'buat', awal, kode = '' }) {
             <PilihLokasi nilai={titik} ubah={setTitik} />
           </Kartu>
 
-          {!perangkat && (
+          {!perangkat && pemilikForm && (
             <label className="card flex cursor-pointer items-start gap-3 p-4">
               <input type="checkbox" checked={f.anonim} onChange={ubah('anonim')} className="mt-1 size-4 accent-[var(--brand)]" />
               <span className="text-sm"><span className="flex items-center gap-1.5 font-semibold"><IkonAman className="size-4 text-brand" aria-hidden />Sembunyikan nama saya</span>

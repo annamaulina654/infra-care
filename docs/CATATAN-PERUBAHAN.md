@@ -48,3 +48,11 @@ Ringkasan untuk laporan: apa yang diganti dan mengapa.
 - Peta Leaflet dan pengambilan lokasi GPS tidak dapat diuji di lingkungan pembuatan; kode peta mengikuti pola `react-leaflet` 4 yang sama dengan versi awal. Periksa di browser setelah `npm install`.
 - Deploy ke Vercel belum dicoba.
 - Library `express`, `bcryptjs`, dan `jsonwebtoken` pada pengujian backend digantikan stub kompatibel di lingkungan pembuatan (paket asli tidak bisa dipasang di sana). Jalankan `npm test` di laptop Anda dengan paket asli untuk memastikan.
+
+## Aturan edit pengaduan
+
+- Pemilik (warga, atau perangkat yang menginput) hanya dapat mengedit saat status **Diterima**. Setelah diproses, isi laporan dikunci agar tidak berbeda dari yang sudah ditinjau; informasi tambahan lewat kolom pesan.
+- Sekretaris desa dapat mengedit selama belum final; kepala desa tidak mengedit; Selesai dan Ditolak terkunci untuk semua.
+- Pilihan anonim hanya dapat diubah pemilik.
+- Riwayat mencatat nama bagian yang berubah (bukan nilainya) karena riwayat tampil publik; tanpa perubahan tidak ada log atau notifikasi.
+- Tombol Edit dan keterangan alasannya mengikuti `bisa_edit` / `alasan_edit` dari backend, sehingga aturan hanya ada di satu tempat.

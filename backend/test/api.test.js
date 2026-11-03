@@ -634,102 +634,163 @@ describe('API pengaduan desa', () => {
   });
 
   // ================================================================== edit pengaduan
-  describe('edit pengaduan (admin atau pemilik)', () => {
-    const isi = (over = {}) => ({
-      judul: 'Jalan desa berlubang di depan balai dusun',
-      kategori: 'Jalan',
-      deskripsi: 'Kondisi ini mengganggu aktivitas warga dan perlu segera ditindaklanjuti.',
-      lokasi: 'Jalan utama Dusun Sumber Gundang, depan balai dusun',
-      dusun: 'Dusun Sumber Gundang',
-      perkiraan: '± 30 meter, perlu pengaspalan',
-      urgensi: 'Tinggi',
-      ...over,
+  // Aturan: pemilik hanya saat "Diterima"; admin selama belum final; kades dan lainnya tidak boleh;
+  // Selesai/Ditolak terkunci untuk semua.
+  describe('edit pengaduan: siapa dan kapan', () => {
+    const dari = (d, over = {}) => ({
+      judul: d.judul, kategori: d.kategori, deskripsi: d.deskripsi, lokasi: d.lokasi, dusun: d.dusun,
+      perkiraan: d.perkiraan, urgensi: d.urgensi, ...over,
     });
+    const detail = async (n, token) => (await get(`/complaints/${kode(n)}`, token)).data;
 
     it('izin: tanpa login 401; bukan pemilik / kades 403; id salah 404', async () => {
-      assert.equal((await patch('/complaints/1', isi(), null)).status, 401);
+      const d = await detail(1, T.admin);
+      assert.equal((await patch('/complaints/1', dari(d), null)).status, 401);
       for (const t of [T.warga2, T.perangkat, T.kades]) {
-        assert.equal((await patch('/complaints/1', isi(), t)).status, 403);
+        const r = await patch('/complaints/1', dari(d), t);
+        assert.equal(r.status, 403);
+        assert.match(r.data.message, /tidak diizinkan/);
       }
-      assert.equal((await patch('/complaints/abc', isi(), T.admin)).status, 404);
-      assert.equal((await patch('/complaints/9999', isi(), T.admin)).status, 404);
+      assert.equal((await patch('/complaints/abc', dari(d), T.admin)).status, 404);
+      assert.equal((await patch('/complaints/9999', dari(d), T.admin)).status, 404);
     });
 
-    it('pemilik dapat mengubah seluruh isian, foto, dan koordinat; log tercatat', async () => {
-      const sebelum = (await get(`/complaints/${kode(1)}`, T.warga)).data;
-      const r = await patch('/complaints/1', isi({
-        judul: 'Jalan desa berlubang (diperbarui)',
+    it('pemilik mengedit saat Diterima: isian, foto, koordinat; riwayat menyebut bagian yang berubah', async () => {
+      const sebelum = await detail(7, T.warga2);
+      assert.equal(sebelum.status, 'Diterima');
+      assert.equal(sebelum.bisa_edit, true);
+      const r = await patch('/complaints/7', dari(sebelum, {
+        judul: 'Pustu kekurangan air bersih (diperbarui)',
         deskripsi: 'Uraian baru dari pemilik.',
-        lokasi: 'Depan balai dusun, RT 01',
-        perkiraan: '5 truk batu',
-        urgensi: 'Sedang',
-        anonim: false,
-        lat: -7.0293,
-        lng: 112.7462,
+        lokasi: 'Pustu Dusun Palanggeren, RT 01',
+        perkiraan: '5 tandon air',
+        urgensi: 'Tinggi',
+        lat: -7.0336,
+        lng: 112.7534,
         foto: PNG,
-      }), T.warga);
+      }), T.warga2);
       assert.equal(r.status, 200);
-      assert.deepEqual(r.data, { id: 1, kode: kode(1) });
-      const d = (await get(`/complaints/${kode(1)}`, T.warga)).data;
-      assert.equal(d.judul, 'Jalan desa berlubang (diperbarui)');
+      assert.deepEqual(r.data, { id: 7, kode: kode(7) });
+      const d = await detail(7, T.warga2);
+      assert.equal(d.judul, 'Pustu kekurangan air bersih (diperbarui)');
       assert.equal(d.deskripsi, 'Uraian baru dari pemilik.');
-      assert.equal(d.lokasi, 'Depan balai dusun, RT 01');
-      assert.equal(d.perkiraan, '5 truk batu');
-      assert.equal(d.urgensi, 'Sedang');
-      assert.equal(d.lat, -7.0293);
-      assert.equal(d.lng, 112.7462);
+      assert.equal(d.lokasi, 'Pustu Dusun Palanggeren, RT 01');
+      assert.equal(d.perkiraan, '5 tandon air');
+      assert.equal(d.urgensi, 'Tinggi');
+      assert.equal(d.lat, -7.0336);
       assert.equal(d.foto, PNG);
-      assert.equal(d.ada_foto, true);
-      assert.equal(d.status, sebelum.status, 'status tidak ikut berubah');
-      assert.equal(d.logs.at(-1).catatan, 'Data pengaduan diubah');
+      assert.equal(d.status, 'Diterima', 'status tidak ikut berubah');
+      assert.equal(d.logs.at(-1).catatan, 'Data pengaduan diubah: judul, uraian, lokasi, perkiraan, urgensi, foto, titik peta');
       assert.equal(d.logs.at(-1).oleh, 'masyarakat');
-      assert.equal(d.pelapor_nama, '');
       assert.equal(d.pembuat_role, 'masyarakat');
       assert.deepEqual(Object.keys(d.ttd).sort(), ['kades', 'sekdes']);
     });
 
     it('foto:null menghapus foto; foto yang tidak dikirim tetap', async () => {
-      assert.equal((await patch('/complaints/1', isi({ judul: 'Tanpa foto' }), T.warga)).status, 200);
-      let d = (await get(`/complaints/${kode(1)}`, T.warga)).data;
+      let d = await detail(7, T.warga2);
+      assert.equal((await patch('/complaints/7', dari(d, { judul: 'Pustu tanpa foto' }), T.warga2)).status, 200);
+      d = await detail(7, T.warga2);
       assert.equal(d.foto, PNG, 'foto lama tetap bila tidak dikirim');
-      assert.equal((await patch('/complaints/1', isi({ judul: 'Tanpa foto', foto: null }), T.warga)).status, 200);
-      d = (await get(`/complaints/${kode(1)}`, T.warga)).data;
+      assert.equal((await patch('/complaints/7', dari(d, { foto: null }), T.warga2)).status, 200);
+      d = await detail(7, T.warga2);
       assert.equal(d.foto, null);
       assert.equal(d.ada_foto, false);
+      assert.equal(d.logs.at(-1).catatan, 'Data pengaduan diubah: foto');
     });
 
-    it('admin dapat mengedit laporan warga lain dan pemilik diberi notifikasi', async () => {
-      const r = await patch('/complaints/2', isi({
-        dusun: 'Dusun Langgali',
+    it('tanpa perubahan: tidak menambah riwayat', async () => {
+      const d = await detail(7, T.warga2);
+      assert.equal((await patch('/complaints/7', dari(d), T.warga2)).status, 200);
+      assert.equal((await detail(7, T.warga2)).logs.length, d.logs.length);
+    });
+
+    it('pemilik terkunci setelah diproses (bukan "Diterima"), dengan alasan yang jelas', async () => {
+      const d1 = await detail(1, T.warga);
+      assert.equal(d1.bisa_edit, false);
+      assert.match(d1.alasan_edit, /sudah diproses/);
+      for (const [id, token] of [[1, T.warga], [2, T.warga], [3, T.perangkat], [12, T.perangkat]]) {
+        const d = await detail(id, token);
+        const r = await patch(`/complaints/${id}`, dari(d, { judul: 'Diubah paksa' }), token);
+        assert.equal(r.status, 403, `id ${id}`);
+        assert.match(r.data.message, /sudah diproses/);
+      }
+      assert.notEqual((await detail(1, T.admin)).judul, 'Diubah paksa');
+    });
+
+    it('admin mengedit laporan warga selama belum final; pemilik diberi notifikasi', async () => {
+      const d0 = await detail(2, T.admin);
+      assert.equal(d0.bisa_edit, true);
+      const r = await patch('/complaints/2', dari(d0, {
         judul: 'Lampu penerangan jalan mati (dicek admin)',
         deskripsi: 'Sudah dicek, menunggu penggantian.',
       }), T.admin);
       assert.equal(r.status, 200);
-      const d = (await get(`/complaints/${kode(2)}`, T.warga)).data;
+      const d = await detail(2, T.warga);
       assert.equal(d.judul, 'Lampu penerangan jalan mati (dicek admin)');
       assert.equal(d.logs.at(-1).oleh, 'admin');
-      assert.equal(d.logs.at(-1).catatan, 'Data pengaduan diubah');
+      assert.equal(d.logs.at(-1).catatan, 'Data pengaduan diubah: judul, uraian');
       const n = (await get('/notifications', T.warga)).data;
       assert.ok(n.some((x) => x.isi.includes(kode(2)) && x.isi.includes('Sekretaris Desa')));
     });
 
-    it('laporan perangkat tetap wajib nama warga; pemilik perangkat dapat mengubahnya', async () => {
-      const tanpaNama = await patch('/complaints/3', isi({ dusun: 'Dusun Langger', pelapor_nama: '' }), T.perangkat);
+    it('status final (Selesai/Ditolak) terkunci untuk semua, termasuk admin', async () => {
+      for (const [id, token] of [[6, T.admin], [6, T.warga], [10, T.admin], [10, T.warga2]]) {
+        const d = await detail(id, token);
+        const r = await patch(`/complaints/${id}`, dari(d, { judul: 'Diubah paksa' }), token);
+        assert.equal(r.status, 403, `id ${id}`);
+        assert.match(r.data.message, /tidak dapat diedit lagi/);
+      }
+      const d = await detail(6, T.admin);
+      assert.equal(d.bisa_edit, false);
+      assert.match(d.alasan_edit, /Selesai/);
+    });
+
+    it('kades tidak bisa edit; alasan penolakan tidak dibocorkan ke peran lain', async () => {
+      const d = await detail(2, T.kades);
+      assert.equal(d.bisa_edit, false);
+      assert.equal('alasan_edit' in d, false);
+    });
+
+    it('pilihan anonim hanya bisa diubah pemilik; admin tidak bisa membuka identitas', async () => {
+      let d = await detail(8, T.warga2);
+      assert.equal(d.anonim, false);
+      assert.equal((await patch('/complaints/8', dari(d, { anonim: true }), T.warga2)).status, 200);
+      d = await detail(8, T.warga2);
+      assert.equal(d.anonim, true);
+      assert.equal(d.logs.at(-1).catatan, 'Data pengaduan diubah: data pelapor');
+      // Admin mencoba mematikan anonim: diabaikan, tidak ada riwayat baru.
+      const sebelum = d.logs.length;
+      assert.equal((await patch('/complaints/8', dari(d, { anonim: false }), T.admin)).status, 200);
+      d = await detail(8, T.admin);
+      assert.equal(d.anonim, true, 'anonim tetap');
+      assert.equal(d.logs.length, sebelum, 'tidak ada perubahan tercatat');
+      // Riwayat publik tidak menyebut kata anonim.
+      const pub = (await get(`/public/complaints/${kode(8)}`)).data;
+      assert.ok(!pub.logs.some((l) => /anonim/i.test(l.catatan || '')));
+      assert.equal((await patch('/complaints/8', dari(d, { anonim: false }), T.warga2)).status, 200);
+      assert.equal((await detail(8, T.warga2)).anonim, false);
+    });
+
+    it('laporan perangkat tetap wajib nama warga; admin dapat mengubahnya', async () => {
+      const d0 = await detail(3, T.admin);
+      const tanpaNama = await patch('/complaints/3', dari(d0, { pelapor_nama: '' }), T.admin);
       assert.equal(tanpaNama.status, 400);
       assert.match(tanpaNama.data.message, /Nama warga/);
-      const r = await patch('/complaints/3', isi({ dusun: 'Dusun Langger', pelapor_nama: 'Bu Marlina (baru)' }), T.perangkat);
+      const r = await patch('/complaints/3', dari(d0, { pelapor_nama: 'Bu Marlina (baru)' }), T.admin);
       assert.equal(r.status, 200);
-      const d = (await get(`/complaints/${kode(3)}`, T.perangkat)).data;
+      const d = await detail(3, T.perangkat);
       assert.equal(d.pelapor, 'Bu Marlina (baru)');
       assert.equal(d.pelapor_nama, 'Bu Marlina (baru)');
       assert.equal(d.pembuat_role, 'perangkat');
+      assert.equal(d.logs.at(-1).catatan, 'Data pengaduan diubah: data pelapor');
     });
 
     it('validasi isian, dusun, dan foto', async () => {
+      const d = await detail(7, T.warga2);
       for (const k of [{ judul: '' }, { kategori: 'Jembatan' }, { urgensi: 'Gawat' }, { dusun: 'Dusun Antah Berantah' }]) {
-        assert.equal((await patch('/complaints/1', isi(k), T.warga)).status, 400, JSON.stringify(k));
+        assert.equal((await patch('/complaints/7', dari(d, k), T.warga2)).status, 400, JSON.stringify(k));
       }
-      assert.equal((await patch('/complaints/1', isi({ foto: 'data:text/html;base64,PHNjcmlwdD4=' }), T.warga)).status, 400);
+      assert.equal((await patch('/complaints/7', dari(d, { foto: 'data:text/html;base64,PHNjcmlwdD4=' }), T.warga2)).status, 400);
     });
   });
 
